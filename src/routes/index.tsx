@@ -11,9 +11,9 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Vistoria de Imóveis — TEMPLAR ENGENHARIA" },
-      { name: "description", content: "Aplicativo de vistoria de imóveis novos da TEMPLAR ENGENHARIA — checklist, fotos e geração de relatório em PDF ou Word." },
+      { name: "description", content: "Vistoria de imóveis" },
       { property: "og:title", content: "Vistoria de Imóveis — TEMPLAR ENGENHARIA" },
-      { property: "og:description", content: "Checklist técnico completo para vistoria de imóveis novos, com relatório profissional em PDF ou Word." },
+      { property: "og:description", content: "Vistoria de imóveis" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
