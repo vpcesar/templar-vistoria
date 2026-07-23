@@ -4,17 +4,17 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { getCompany, getInspection } from "@/lib/storage";
 import type { Inspection } from "@/lib/types";
-import { downloadBlob, generateDOCX, generatePDF } from "@/lib/report-generator";
-import { ArrowLeft, FileDown, FileText, Loader2 } from "lucide-react";
+import { downloadBlob, generateDOCX, generatePDF, shareBlob } from "@/lib/report-generator";
+import { ArrowLeft, FileDown, FileText, Loader2, Pencil, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/vistoria/$id/report")({
   head: () => ({
     meta: [
       { title: "Relatório de Vistoria — TEMPLAR ENGENHARIA" },
-      { name: "description", content: "Gere e baixe o relatório da vistoria em PDF ou Word." },
+      { name: "description", content: "Gere, baixe e compartilhe o relatório da vistoria em PDF ou Word." },
       { property: "og:title", content: "Relatório de Vistoria — TEMPLAR ENGENHARIA" },
-      { property: "og:description", content: "Gere e baixe o relatório em PDF ou Word." },
+      { property: "og:description", content: "Gere, baixe e compartilhe o relatório em PDF ou Word." },
     ],
   }),
   component: ReportPage,
@@ -24,7 +24,7 @@ function ReportPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const [insp, setInsp] = useState<Inspection | null>(null);
-  const [busy, setBusy] = useState<"pdf" | "docx" | null>(null);
+  const [busy, setBusy] = useState<"pdf" | "docx" | "share" | null>(null);
 
   useEffect(() => {
     const i = getInspection(id);
@@ -37,13 +37,20 @@ function ReportPage() {
     return `Vistoria_${safe(insp?.client ?? "cliente")}_${insp?.date ?? ""}.${ext}`;
   };
 
-  const doPDF = async () => {
+  const doPDF = async (share = false) => {
     if (!insp) return;
-    setBusy("pdf");
+    setBusy(share ? "share" : "pdf");
     try {
       const blob = await generatePDF(insp, getCompany());
-      downloadBlob(blob, filename("pdf"));
-      toast.success("PDF gerado");
+      const name = filename("pdf");
+      if (share) {
+        const ok = await shareBlob(blob, name, `Vistoria — ${insp.client}`);
+        if (!ok) { downloadBlob(blob, name); toast.success("PDF baixado (compartilhamento indisponível)"); }
+        else toast.success("Compartilhado");
+      } else {
+        downloadBlob(blob, name);
+        toast.success("PDF gerado");
+      }
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao gerar PDF");
     } finally { setBusy(null); }
@@ -59,6 +66,13 @@ function ReportPage() {
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao gerar Word");
     } finally { setBusy(null); }
+  };
+
+  const editHeader = () => {
+    if (insp?.completed) {
+      if (!confirm("Ao editar o cabeçalho, você precisará gerar o relatório novamente. Deseja continuar?")) return;
+    }
+    navigate({ to: "/vistoria/$id/edit", params: { id } });
   };
 
   if (!insp) return <div className="p-6 text-center text-muted-foreground">Carregando…</div>;
@@ -79,7 +93,12 @@ function ReportPage() {
         </Link>
 
         <div className="rounded-lg bg-card border border-border p-6 mb-6">
-          <h1 className="text-2xl font-bold mb-1">Relatório pronto</h1>
+          <div className="flex flex-wrap items-start justify-between gap-2 mb-1">
+            <h1 className="text-2xl font-bold">Relatório pronto</h1>
+            <Button size="sm" variant="outline" onClick={editHeader}>
+              <Pencil className="h-4 w-4" /> Editar cabeçalho
+            </Button>
+          </div>
           <p className="text-sm text-muted-foreground mb-4">Cliente: <span className="font-medium text-foreground">{insp.client}</span> — {insp.date}</p>
 
           <div className="grid grid-cols-3 gap-3 mb-6">
@@ -89,7 +108,7 @@ function ReportPage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <Button size="lg" className="h-14" onClick={doPDF} disabled={busy !== null}>
+            <Button size="lg" className="h-14" onClick={() => doPDF(false)} disabled={busy !== null}>
               {busy === "pdf" ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileText className="h-5 w-5" />}
               GERAR PDF
             </Button>
@@ -97,13 +116,17 @@ function ReportPage() {
               {busy === "docx" ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileDown className="h-5 w-5" />}
               GERAR WORD (.docx)
             </Button>
+            <Button size="lg" variant="secondary" className="h-14 sm:col-span-2" onClick={() => doPDF(true)} disabled={busy !== null}>
+              {busy === "share" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Share2 className="h-5 w-5" />}
+              COMPARTILHAR PDF (WhatsApp, e-mail…)
+            </Button>
           </div>
         </div>
 
         <div className="rounded-lg border border-border bg-card p-5">
           <h2 className="font-semibold mb-3">Continuar editando</h2>
           <p className="text-sm text-muted-foreground mb-3">Você pode voltar ao checklist ou refazer a revisão de observações a qualquer momento.</p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={() => navigate({ to: "/vistoria/$id/checklist", params: { id } })}>
               Editar checklist
             </Button>

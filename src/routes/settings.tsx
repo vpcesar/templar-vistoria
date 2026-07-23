@@ -1,21 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getCompany, getResponsibles, newId, saveCompany, saveResponsibles } from "@/lib/storage";
+import { clearGeminiKey, getGeminiKey, setGeminiKey, testGeminiConnection } from "@/lib/gemini-client";
+import { compressImage } from "@/lib/image-utils";
 import type { CompanyInfo, Responsible } from "@/lib/types";
-import { ArrowLeft, Plus, Trash2, Pencil, Save, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Pencil, Save, X, Upload, ImageOff, CheckCircle2, KeyRound, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
       { title: "Configurações — TEMPLAR ENGENHARIA" },
-      { name: "description", content: "Cadastre responsáveis técnicos e dados da empresa para as vistorias." },
+      { name: "description", content: "Cadastre responsáveis técnicos, logo da empresa e a chave da API Gemini." },
       { property: "og:title", content: "Configurações — TEMPLAR ENGENHARIA" },
-      { property: "og:description", content: "Cadastre responsáveis técnicos e dados da empresa." },
+      { property: "og:description", content: "Responsáveis, dados da empresa, logo e integração de IA." },
     ],
   }),
   component: SettingsPage,
@@ -29,10 +31,14 @@ function SettingsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editCrea, setEditCrea] = useState("");
+  const [geminiKey, setGeminiKeyState] = useState("");
+  const [testing, setTesting] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setResps(getResponsibles());
     setCompany(getCompany());
+    setGeminiKeyState(getGeminiKey());
   }, []);
 
   const add = () => {
@@ -43,36 +49,83 @@ function SettingsPage() {
     const next = [...resps, { id: newId(), name: newName.trim(), crea: newCrea.trim() }];
     setResps(next);
     saveResponsibles(next);
-    setNewName("");
-    setNewCrea("");
+    setNewName(""); setNewCrea("");
     toast.success("Responsável adicionado");
   };
 
   const remove = (id: string) => {
     if (!confirm("Remover este responsável?")) return;
     const next = resps.filter((r) => r.id !== id);
-    setResps(next);
-    saveResponsibles(next);
+    setResps(next); saveResponsibles(next);
   };
 
-  const startEdit = (r: Responsible) => {
-    setEditingId(r.id);
-    setEditName(r.name);
-    setEditCrea(r.crea);
-  };
-
+  const startEdit = (r: Responsible) => { setEditingId(r.id); setEditName(r.name); setEditCrea(r.crea); };
   const saveEdit = () => {
     const next = resps.map((r) => (r.id === editingId ? { ...r, name: editName.trim(), crea: editCrea.trim() } : r));
-    setResps(next);
-    saveResponsibles(next);
-    setEditingId(null);
+    setResps(next); saveResponsibles(next); setEditingId(null);
     toast.success("Responsável atualizado");
   };
 
-  const saveCompanyInfo = () => {
-    saveCompany(company);
-    toast.success("Dados da empresa salvos");
+  const persistCompany = (c: CompanyInfo) => {
+    try {
+      saveCompany(c);
+      setCompany(c);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao salvar");
+    }
   };
+
+  const saveCompanyInfo = () => {
+    try {
+      saveCompany(company);
+      toast.success("Dados da empresa salvos");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao salvar");
+    }
+  };
+
+  const onLogoFile = async (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("A imagem deve ter no máximo 5 MB.");
+      return;
+    }
+    try {
+      const data = await compressImage(file, 400, 0.85);
+      persistCompany({ ...company, logoBase64: data });
+      toast.success("Logo atualizado");
+    } catch {
+      toast.error("Não foi possível processar a imagem.");
+    }
+  };
+  const removeLogo = () => {
+    persistCompany({ ...company, logoBase64: undefined });
+    if (fileRef.current) fileRef.current.value = "";
+    toast.success("Logo removido");
+  };
+
+  const saveGemini = () => {
+    setGeminiKey(geminiKey.trim());
+    toast.success(geminiKey.trim() ? "Chave salva" : "Chave removida");
+  };
+  const removeGemini = () => {
+    clearGeminiKey();
+    setGeminiKeyState("");
+    toast.success("Chave removida");
+  };
+  const testGemini = async () => {
+    const k = geminiKey.trim();
+    if (!k) { toast.error("Informe a chave antes de testar."); return; }
+    setTesting(true);
+    try {
+      await testGeminiConnection(k);
+      setGeminiKey(k);
+      toast.success("Conexão OK — chave salva");
+    } catch (e: any) {
+      toast.error(`Falha: ${e?.message ?? "erro desconhecido"}`);
+    } finally { setTesting(false); }
+  };
+
+  const keyConfigured = geminiKey.trim().length > 0 && getGeminiKey() === geminiKey.trim();
 
   return (
     <div className="min-h-screen bg-secondary/40">
@@ -85,11 +138,8 @@ function SettingsPage() {
 
         <section className="rounded-lg bg-card border border-border p-5 mb-6">
           <h2 className="font-semibold text-lg mb-4">Responsáveis Técnicos</h2>
-
           <div className="space-y-2 mb-4">
-            {resps.length === 0 && (
-              <p className="text-sm text-muted-foreground">Nenhum responsável cadastrado.</p>
-            )}
+            {resps.length === 0 && (<p className="text-sm text-muted-foreground">Nenhum responsável cadastrado.</p>)}
             {resps.map((r) => (
               <div key={r.id} className="rounded-md border border-border p-3">
                 {editingId === r.id ? (
@@ -114,7 +164,6 @@ function SettingsPage() {
               </div>
             ))}
           </div>
-
           <div className="border-t border-border pt-4">
             <p className="text-sm font-medium mb-2">Adicionar novo</p>
             <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
@@ -125,26 +174,85 @@ function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-lg bg-card border border-border p-5">
+        <section className="rounded-lg bg-card border border-border p-5 mb-6">
           <h2 className="font-semibold text-lg mb-4">Dados da Empresa</h2>
+
+          <div className="mb-5">
+            <Label>Logotipo</Label>
+            <div className="mt-2 flex items-center gap-4">
+              <div className="h-24 w-24 rounded-md border border-border bg-secondary/50 flex items-center justify-center overflow-hidden shrink-0">
+                {company.logoBase64 ? (
+                  <img src={company.logoBase64} alt="Logo" className="h-full w-full object-contain" />
+                ) : (
+                  <div className="text-[10px] text-muted-foreground text-center px-1 leading-tight">
+                    <ImageOff className="h-5 w-5 mx-auto mb-1" />
+                    LOGO DA<br />EMPRESA
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) onLogoFile(f); }}
+                />
+                <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}>
+                  <Upload className="h-4 w-4" /> {company.logoBase64 ? "Trocar logo" : "Enviar logo"}
+                </Button>
+                {company.logoBase64 && (
+                  <Button type="button" variant="ghost" onClick={removeLogo}>
+                    <Trash2 className="h-4 w-4" /> Remover
+                  </Button>
+                )}
+                <p className="text-xs text-muted-foreground">JPG ou PNG, até 5 MB.</p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid gap-4">
-            <div>
-              <Label>Nome</Label>
-              <Input value={company.name} onChange={(e) => setCompany({ ...company, name: e.target.value })} />
-            </div>
-            <div>
-              <Label>Site</Label>
-              <Input value={company.site} onChange={(e) => setCompany({ ...company, site: e.target.value })} />
-            </div>
-            <div>
-              <Label>WhatsApp</Label>
-              <Input value={company.whatsapp} onChange={(e) => setCompany({ ...company, whatsapp: e.target.value })} />
-            </div>
-            <div>
-              <Label>E-mail</Label>
-              <Input value={company.email} onChange={(e) => setCompany({ ...company, email: e.target.value })} />
-            </div>
+            <div><Label>Nome</Label><Input value={company.name} onChange={(e) => setCompany({ ...company, name: e.target.value })} /></div>
+            <div><Label>Site</Label><Input value={company.site} onChange={(e) => setCompany({ ...company, site: e.target.value })} /></div>
+            <div><Label>WhatsApp</Label><Input value={company.whatsapp} onChange={(e) => setCompany({ ...company, whatsapp: e.target.value })} /></div>
+            <div><Label>E-mail</Label><Input value={company.email} onChange={(e) => setCompany({ ...company, email: e.target.value })} /></div>
             <Button onClick={saveCompanyInfo}><Save className="h-4 w-4" /> Salvar dados da empresa</Button>
+          </div>
+        </section>
+
+        <section className="rounded-lg bg-card border border-border p-5">
+          <h2 className="font-semibold text-lg mb-1 flex items-center gap-2"><KeyRound className="h-5 w-5" /> Integração de IA</h2>
+          <p className="text-xs text-muted-foreground mb-4">
+            A chave é usada apenas neste dispositivo para o aprimoramento de observações. Obtenha em{" "}
+            <a href="https://aistudio.google.com" target="_blank" rel="noreferrer" className="text-primary underline">aistudio.google.com</a>.
+          </p>
+          <div className="grid gap-3">
+            <div>
+              <Label>Chave da API Gemini</Label>
+              <Input
+                type="password"
+                value={geminiKey}
+                onChange={(e) => setGeminiKeyState(e.target.value)}
+                placeholder="AIza…"
+                autoComplete="off"
+              />
+              <p className="text-xs mt-1 flex items-center gap-1.5">
+                {keyConfigured ? (
+                  <span className="text-success inline-flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" /> Chave configurada</span>
+                ) : (
+                  <span className="text-muted-foreground">Nenhuma chave configurada</span>
+                )}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={saveGemini}><Save className="h-4 w-4" /> Salvar chave</Button>
+              <Button variant="outline" onClick={testGemini} disabled={testing}>
+                {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Testar conexão
+              </Button>
+              {getGeminiKey() && (
+                <Button variant="ghost" onClick={removeGemini}><Trash2 className="h-4 w-4" /> Remover chave</Button>
+              )}
+            </div>
           </div>
         </section>
       </main>

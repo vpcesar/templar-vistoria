@@ -5,10 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { getInspection, saveInspection } from "@/lib/storage";
 import type { Inspection } from "@/lib/types";
-import { enhanceObservations } from "@/lib/ai-enhance.functions";
-import { ArrowLeft, FileText, Sparkles, Check, Loader2 } from "lucide-react";
+import { enhanceObservationsGemini, getGeminiKey } from "@/lib/gemini-client";
+import { ArrowLeft, FileText, Sparkles, Check, Loader2, WifiOff } from "lucide-react";
 import { toast } from "sonner";
-import { useServerFn } from "@tanstack/react-start";
 
 export const Route = createFileRoute("/vistoria/$id/review")({
   head: () => ({
@@ -30,7 +29,6 @@ interface Entry {
   original: string;
   enhanced: string;
   accepted: string;
-  loading: boolean;
 }
 
 function keyFor(roomId: string, itemIdx: number) {
@@ -40,10 +38,10 @@ function keyFor(roomId: string, itemIdx: number) {
 function ReviewPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const enhanceFn = useServerFn(enhanceObservations);
   const [insp, setInsp] = useState<Inspection | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [batchLoading, setBatchLoading] = useState(false);
+  const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
 
   useEffect(() => {
     const i = getInspection(id);
@@ -61,7 +59,6 @@ function ReviewPage() {
             original: it.observations,
             enhanced: it.aiObservations ?? "",
             accepted: it.finalObservations ?? it.observations,
-            loading: false,
           });
         }
       });
@@ -69,8 +66,25 @@ function ReviewPage() {
     setEntries(list);
   }, [id, navigate]);
 
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
+
   const enhanceAll = async () => {
     if (entries.length === 0) return;
+    const apiKey = getGeminiKey();
+    if (!apiKey) {
+      toast.error("Configure sua chave da API Gemini nas Configurações antes de usar o aprimoramento por IA.");
+      return;
+    }
+    if (!navigator.onLine) {
+      toast.error("É necessário conexão com internet para o aprimoramento por IA. Você pode editar as observações manualmente.");
+      return;
+    }
     setBatchLoading(true);
     try {
       const payload = entries.map((e) => ({
@@ -79,8 +93,7 @@ function ReviewPage() {
         roomName: e.roomName,
         original: e.original,
       }));
-      const res = await enhanceFn({ data: { items: payload } });
-      const map = res.results ?? {};
+      const map = await enhanceObservationsGemini(apiKey, payload);
       setEntries((prev) =>
         prev.map((e) => {
           const k = keyFor(e.roomId, e.itemIdx);
@@ -96,19 +109,12 @@ function ReviewPage() {
     }
   };
 
-  const acceptOne = (i: number) => {
-    setEntries((prev) => prev.map((e, x) => (x === i ? { ...e, accepted: e.enhanced || e.original } : e)));
-  };
-  const keepOriginal = (i: number) => {
-    setEntries((prev) => prev.map((e, x) => (x === i ? { ...e, accepted: e.original } : e)));
-  };
-  const editAccepted = (i: number, v: string) => {
-    setEntries((prev) => prev.map((e, x) => (x === i ? { ...e, accepted: v } : e)));
-  };
+  const acceptOne = (i: number) => setEntries((prev) => prev.map((e, x) => (x === i ? { ...e, accepted: e.enhanced || e.original } : e)));
+  const keepOriginal = (i: number) => setEntries((prev) => prev.map((e, x) => (x === i ? { ...e, accepted: e.original } : e)));
+  const editAccepted = (i: number, v: string) => setEntries((prev) => prev.map((e, x) => (x === i ? { ...e, accepted: v } : e)));
 
   const generate = () => {
     if (!insp) return;
-    // Apply accepted texts back
     const next: Inspection = {
       ...insp,
       completed: true,
@@ -125,11 +131,17 @@ function ReviewPage() {
         }),
       })),
     };
-    saveInspection(next);
-    navigate({ to: "/vistoria/$id/report", params: { id } });
+    try {
+      saveInspection(next);
+      navigate({ to: "/vistoria/$id/report", params: { id } });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao salvar");
+    }
   };
 
   if (!insp) return <div className="p-6 text-center text-muted-foreground">Carregando…</div>;
+
+  const disabledAI = batchLoading || !online;
 
   return (
     <div className="min-h-screen bg-secondary/40 pb-8">
@@ -139,7 +151,9 @@ function ReviewPage() {
           <ArrowLeft className="h-4 w-4" /> Voltar ao checklist
         </Link>
         <h1 className="text-2xl font-bold mb-2">Revisão de Observações</h1>
-        <p className="text-sm text-muted-foreground mb-4">Aprimore as observações digitadas com auxílio técnico automático. Você pode aceitar, editar ou manter o texto original.</p>
+        <p className="text-sm text-muted-foreground mb-4">
+          Aprimore as observações digitadas com auxílio técnico da IA. Você pode aceitar, editar ou manter o texto original.
+        </p>
 
         {entries.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
@@ -150,14 +164,18 @@ function ReviewPage() {
           <>
             <Button
               onClick={enhanceAll}
-              disabled={batchLoading}
-              className="w-full h-12 mb-6"
+              disabled={disabledAI}
+              title={!online ? "Conecte-se à internet para usar a IA" : undefined}
+              className="w-full h-12 mb-2"
             >
-              {batchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              {batchLoading ? "Aprimorando…" : "APRIMORAR TODAS"}
+              {batchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : online ? <Sparkles className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+              {batchLoading ? "Aprimorando…" : online ? "APRIMORAR TODAS" : "SEM INTERNET"}
             </Button>
+            {!online && (
+              <p className="text-xs text-muted-foreground mb-4 text-center">Conecte-se à internet para usar a IA. Você ainda pode editar manualmente.</p>
+            )}
 
-            <div className="space-y-4">
+            <div className="space-y-4 mt-4">
               {entries.map((e, i) => (
                 <div key={i} className="rounded-lg bg-card border border-border p-4">
                   <div className="text-xs text-muted-foreground mb-1">
@@ -174,7 +192,7 @@ function ReviewPage() {
                         rows={4}
                         value={e.accepted}
                         onChange={(ev) => editAccepted(i, ev.target.value)}
-                        placeholder={e.enhanced ? "" : "Clique em APRIMORAR TODAS para gerar"}
+                        placeholder={e.enhanced ? "" : "Clique em APRIMORAR TODAS para gerar (ou edite manualmente)"}
                       />
                     </div>
                   </div>
