@@ -12,6 +12,7 @@ export interface CompanyInfo {
   site: string;
   whatsapp: string;
   email: string;
+  logoBase64?: string;
 }
 
 export interface ChecklistItemTemplate {
@@ -31,18 +32,18 @@ export interface RoomTemplate {
 export interface ChecklistItemState {
   templateId: string;
   title: string;
-  exists: boolean | null; // null = not answered, true = SIM, false = NAO
-  status: ItemStatus; // only when exists === true
+  exists: boolean | null;
+  status: ItemStatus;
   observations: string;
   aiObservations?: string;
-  finalObservations?: string; // accepted text
-  photos: string[]; // base64 data URLs
+  finalObservations?: string;
+  photos: string[];
 }
 
 export interface RoomState {
   id: string;
   name: string;
-  templateKey: string; // key of template used
+  templateKey: string;
   items: ChecklistItemState[];
 }
 

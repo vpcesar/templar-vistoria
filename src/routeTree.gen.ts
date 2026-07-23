@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as VistoriaNewRouteImport } from './routes/vistoria.new'
 import { Route as VistoriaIdReviewRouteImport } from './routes/vistoria.$id.review'
 import { Route as VistoriaIdReportRouteImport } from './routes/vistoria.$id.report'
+import { Route as VistoriaIdEditRouteImport } from './routes/vistoria.$id.edit'
 import { Route as VistoriaIdChecklistRouteImport } from './routes/vistoria.$id.checklist'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -47,6 +48,11 @@ const VistoriaIdReportRoute = VistoriaIdReportRouteImport.update({
   path: '/vistoria/$id/report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VistoriaIdEditRoute = VistoriaIdEditRouteImport.update({
+  id: '/vistoria/$id/edit',
+  path: '/vistoria/$id/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VistoriaIdChecklistRoute = VistoriaIdChecklistRouteImport.update({
   id: '/vistoria/$id/checklist',
   path: '/vistoria/$id/checklist',
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vistoria/new': typeof VistoriaNewRoute
   '/vistoria/$id/checklist': typeof VistoriaIdChecklistRoute
+  '/vistoria/$id/edit': typeof VistoriaIdEditRoute
   '/vistoria/$id/report': typeof VistoriaIdReportRoute
   '/vistoria/$id/review': typeof VistoriaIdReviewRoute
 }
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vistoria/new': typeof VistoriaNewRoute
   '/vistoria/$id/checklist': typeof VistoriaIdChecklistRoute
+  '/vistoria/$id/edit': typeof VistoriaIdEditRoute
   '/vistoria/$id/report': typeof VistoriaIdReportRoute
   '/vistoria/$id/review': typeof VistoriaIdReviewRoute
 }
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vistoria/new': typeof VistoriaNewRoute
   '/vistoria/$id/checklist': typeof VistoriaIdChecklistRoute
+  '/vistoria/$id/edit': typeof VistoriaIdEditRoute
   '/vistoria/$id/report': typeof VistoriaIdReportRoute
   '/vistoria/$id/review': typeof VistoriaIdReviewRoute
 }
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/vistoria/new'
     | '/vistoria/$id/checklist'
+    | '/vistoria/$id/edit'
     | '/vistoria/$id/report'
     | '/vistoria/$id/review'
   fileRoutesByTo: FileRoutesByTo
@@ -98,6 +108,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/vistoria/new'
     | '/vistoria/$id/checklist'
+    | '/vistoria/$id/edit'
     | '/vistoria/$id/report'
     | '/vistoria/$id/review'
   id:
@@ -107,6 +118,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/vistoria/new'
     | '/vistoria/$id/checklist'
+    | '/vistoria/$id/edit'
     | '/vistoria/$id/report'
     | '/vistoria/$id/review'
   fileRoutesById: FileRoutesById
@@ -117,6 +129,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   VistoriaNewRoute: typeof VistoriaNewRoute
   VistoriaIdChecklistRoute: typeof VistoriaIdChecklistRoute
+  VistoriaIdEditRoute: typeof VistoriaIdEditRoute
   VistoriaIdReportRoute: typeof VistoriaIdReportRoute
   VistoriaIdReviewRoute: typeof VistoriaIdReviewRoute
 }
@@ -165,6 +178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VistoriaIdReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vistoria/$id/edit': {
+      id: '/vistoria/$id/edit'
+      path: '/vistoria/$id/edit'
+      fullPath: '/vistoria/$id/edit'
+      preLoaderRoute: typeof VistoriaIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/vistoria/$id/checklist': {
       id: '/vistoria/$id/checklist'
       path: '/vistoria/$id/checklist'
@@ -181,19 +201,10 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   VistoriaNewRoute: VistoriaNewRoute,
   VistoriaIdChecklistRoute: VistoriaIdChecklistRoute,
+  VistoriaIdEditRoute: VistoriaIdEditRoute,
   VistoriaIdReportRoute: VistoriaIdReportRoute,
   VistoriaIdReviewRoute: VistoriaIdReviewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

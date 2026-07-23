@@ -4,7 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { deleteInspection, getInspections, getResponsibles } from "@/lib/storage";
 import type { Inspection } from "@/lib/types";
-import { FileText, Trash2, FolderOpen, Plus, MapPin, Calendar, User, AlertCircle } from "lucide-react";
+import { FileText, Trash2, FolderOpen, Plus, MapPin, Calendar, User, AlertCircle, Info, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
@@ -51,9 +51,14 @@ function Dashboard() {
     <div className="min-h-screen bg-secondary/40">
       <AppHeader />
       <main className="mx-auto max-w-5xl px-4 py-6">
-        <div className="mb-6">
+        <div className="mb-4">
           <h1 className="text-2xl font-bold text-foreground">Vistorias</h1>
           <p className="text-sm text-muted-foreground">Gerencie suas vistorias de imóveis novos.</p>
+        </div>
+
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-border bg-card p-3 text-xs text-muted-foreground">
+          <Info className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
+          <p>Os dados ficam salvos neste dispositivo. Gere e baixe o relatório após cada vistoria para não perder os dados.</p>
         </div>
 
         {!hasResp && (
@@ -62,20 +67,13 @@ function Dashboard() {
             <div className="text-sm">
               <p className="font-medium">Nenhum responsável técnico cadastrado.</p>
               <p className="text-muted-foreground">
-                <Link to="/settings" className="text-primary underline">
-                  Cadastre um responsável
-                </Link>{" "}
-                antes de iniciar uma vistoria.
+                <Link to="/settings" className="text-primary underline">Cadastre um responsável</Link> antes de iniciar uma vistoria.
               </p>
             </div>
           </div>
         )}
 
-        <Button
-          size="lg"
-          onClick={onNew}
-          className="w-full h-14 text-base font-semibold mb-6"
-        >
+        <Button size="lg" onClick={onNew} className="w-full h-14 text-base font-semibold mb-6">
           <Plus className="h-5 w-5" /> NOVA VISTORIA
         </Button>
 
@@ -102,20 +100,17 @@ function Dashboard() {
                   </span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate({ to: "/vistoria/$id/checklist", params: { id: it.id } })}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => navigate({ to: "/vistoria/$id/checklist", params: { id: it.id } })}>
                     <FolderOpen className="h-4 w-4" /> Abrir
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate({ to: "/vistoria/$id/report", params: { id: it.id } })}
-                  >
-                    <FileText className="h-4 w-4" /> Relatório
+                  <Button variant="outline" size="sm" onClick={() => navigate({ to: "/vistoria/$id/edit", params: { id: it.id } })}>
+                    <Pencil className="h-4 w-4" /> Editar cabeçalho
                   </Button>
+                  {it.completed && (
+                    <Button variant="outline" size="sm" onClick={() => navigate({ to: "/vistoria/$id/report", params: { id: it.id } })}>
+                      <FileText className="h-4 w-4" /> Relatório
+                    </Button>
+                  )}
                   <Button variant="ghost" size="sm" onClick={() => onDelete(it.id)}>
                     <Trash2 className="h-4 w-4" /> Excluir
                   </Button>

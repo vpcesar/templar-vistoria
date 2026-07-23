@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { getInspection, saveInspection } from "@/lib/storage";
 import { ROOM_TEMPLATES } from "@/lib/checklist-templates";
+import { compressImage } from "@/lib/image-utils";
 import type { ChecklistItemState, Inspection, ItemStatus } from "@/lib/types";
 import { AlertTriangle, ArrowLeft, ArrowRight, Camera, Check, CheckCircle2, ClipboardCheck, Info, Lightbulb, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -67,7 +68,11 @@ function ChecklistPage() {
       ),
     };
     setInsp(next);
-    saveInspection(next);
+    try {
+      saveInspection(next);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao salvar");
+    }
   };
 
   const goPrev = () => setRoomIdx(Math.max(0, roomIdx - 1));
@@ -340,30 +345,3 @@ function ChoiceBtn({
   );
 }
 
-async function compressImage(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const max = 1280;
-        let { width, height } = img;
-        if (width > max || height > max) {
-          const scale = Math.min(max / width, max / height);
-          width = Math.round(width * scale);
-          height = Math.round(height * scale);
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d")!;
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.75));
-      };
-      img.onerror = reject;
-      img.src = reader.result as string;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
