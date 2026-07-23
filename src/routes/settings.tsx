@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getCompany, getResponsibles, newId, saveCompany, saveResponsibles } from "@/lib/storage";
-import { clearGeminiKey, getGeminiKey, setGeminiKey, testGeminiConnection } from "@/lib/gemini-client";
+import { clearGroqKey, getGroqKey, setGroqKey, testGroqConnection } from "@/lib/groq-client";
 import { compressImage } from "@/lib/image-utils";
 import type { CompanyInfo, Responsible } from "@/lib/types";
 import { ArrowLeft, Plus, Trash2, Pencil, Save, X, Upload, ImageOff, CheckCircle2, KeyRound, Loader2 } from "lucide-react";
