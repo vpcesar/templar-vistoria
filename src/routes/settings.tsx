@@ -223,8 +223,8 @@ function SettingsPage() {
         <section className="rounded-lg bg-card border border-border p-5">
           <h2 className="font-semibold text-lg mb-1 flex items-center gap-2"><KeyRound className="h-5 w-5" /> Integração de IA</h2>
           <p className="text-xs text-muted-foreground mb-4">
-            A chave é usada apenas neste dispositivo para o aprimoramento de observações. Obtenha em{" "}
-            <a href="https://aistudio.google.com" target="_blank" rel="noreferrer" className="text-primary underline">aistudio.google.com</a>.
+            A chave é usada apenas neste dispositivo para o aprimoramento de observações. Obtenha sua chave gratuita em{" "}
+            <a href="https://console.groq.com" target="_blank" rel="noreferrer" className="text-primary underline">console.groq.com</a>.
           </p>
           <div className="grid gap-3">
             <div>
@@ -233,7 +233,7 @@ function SettingsPage() {
                 type="password"
                 value={groqKey}
                 onChange={(e) => setGroqKeyState(e.target.value)}
-                placeholder="AIza…"
+                placeholder="gsk_…"
                 autoComplete="off"
               />
               <p className="text-xs mt-1 flex items-center gap-1.5">
