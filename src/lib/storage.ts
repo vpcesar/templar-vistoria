@@ -1,5 +1,6 @@
 import type { CompanyInfo, Inspection, Responsible, RoomState } from "./types";
 import { detectTemplate } from "./checklist-templates";
+import { isQuotaError } from "./image-utils";
 
 const K_INSPECTIONS = "templar_inspections_v1";
 const K_RESPONSIBLES = "templar_responsibles_v1";
@@ -24,11 +25,20 @@ function read<T>(key: string, fallback: T): T {
 
 function write<T>(key: string, value: T): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    if (isQuotaError(e)) {
+      throw new Error(
+        "Espaço de armazenamento cheio. Exclua vistorias antigas ou gere os relatórios e exclua as vistorias já concluídas.",
+      );
+    }
+    throw e;
+  }
 }
 
 export function getCompany(): CompanyInfo {
-  return read(K_COMPANY, DEFAULT_COMPANY);
+  return { ...DEFAULT_COMPANY, ...read<Partial<CompanyInfo>>(K_COMPANY, {}) };
 }
 export function saveCompany(c: CompanyInfo): void {
   write(K_COMPANY, c);
@@ -65,7 +75,7 @@ export function buildRoomsFromNames(names: string[]): RoomState[] {
   return names.map((name, idx) => {
     const tpl = detectTemplate(name);
     return {
-      id: `${Date.now()}_${idx}`,
+      id: `${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
       name,
       templateKey: tpl.id,
       items: tpl.items.map((t) => ({
@@ -78,6 +88,10 @@ export function buildRoomsFromNames(names: string[]): RoomState[] {
       })),
     };
   });
+}
+
+export function buildRoomFromName(name: string): RoomState {
+  return buildRoomsFromNames([name])[0];
 }
 
 export function newId(): string {
