@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { getInspection, saveInspection } from "@/lib/storage";
 import type { Inspection } from "@/lib/types";
-import { enhanceObservationsGemini, getGeminiKey } from "@/lib/gemini-client";
+import { enhanceObservationsGroq, getGroqKey } from "@/lib/groq-client";
 import { ArrowLeft, FileText, Sparkles, Check, Loader2, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 
