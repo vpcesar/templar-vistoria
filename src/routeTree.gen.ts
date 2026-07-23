@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VistoriaNewRouteImport } from './routes/vistoria.new'
@@ -16,6 +17,11 @@ import { Route as VistoriaIdReviewRouteImport } from './routes/vistoria.$id.revi
 import { Route as VistoriaIdReportRouteImport } from './routes/vistoria.$id.report'
 import { Route as VistoriaIdChecklistRouteImport } from './routes/vistoria.$id.checklist'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -50,6 +56,7 @@ const VistoriaIdChecklistRoute = VistoriaIdChecklistRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vistoria/new': typeof VistoriaNewRoute
   '/vistoria/$id/checklist': typeof VistoriaIdChecklistRoute
   '/vistoria/$id/report': typeof VistoriaIdReportRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vistoria/new': typeof VistoriaNewRoute
   '/vistoria/$id/checklist': typeof VistoriaIdChecklistRoute
   '/vistoria/$id/report': typeof VistoriaIdReportRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vistoria/new': typeof VistoriaNewRoute
   '/vistoria/$id/checklist': typeof VistoriaIdChecklistRoute
   '/vistoria/$id/report': typeof VistoriaIdReportRoute
@@ -77,6 +86,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/settings'
+    | '/sitemap.xml'
     | '/vistoria/new'
     | '/vistoria/$id/checklist'
     | '/vistoria/$id/report'
@@ -85,6 +95,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/settings'
+    | '/sitemap.xml'
     | '/vistoria/new'
     | '/vistoria/$id/checklist'
     | '/vistoria/$id/report'
@@ -93,6 +104,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/settings'
+    | '/sitemap.xml'
     | '/vistoria/new'
     | '/vistoria/$id/checklist'
     | '/vistoria/$id/report'
@@ -102,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SettingsRoute: typeof SettingsRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   VistoriaNewRoute: typeof VistoriaNewRoute
   VistoriaIdChecklistRoute: typeof VistoriaIdChecklistRoute
   VistoriaIdReportRoute: typeof VistoriaIdReportRoute
@@ -110,6 +123,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -158,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SettingsRoute: SettingsRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   VistoriaNewRoute: VistoriaNewRoute,
   VistoriaIdChecklistRoute: VistoriaIdChecklistRoute,
   VistoriaIdReportRoute: VistoriaIdReportRoute,
@@ -166,3 +187,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
