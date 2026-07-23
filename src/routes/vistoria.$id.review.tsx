@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { getInspection, saveInspection } from "@/lib/storage";
 import type { Inspection } from "@/lib/types";
-import { enhanceObservationsGemini, getGeminiKey } from "@/lib/gemini-client";
+import { enhanceObservationsGroq, getGroqKey } from "@/lib/groq-client";
 import { ArrowLeft, FileText, Sparkles, Check, Loader2, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 
@@ -76,9 +76,9 @@ function ReviewPage() {
 
   const enhanceAll = async () => {
     if (entries.length === 0) return;
-    const apiKey = getGeminiKey();
+    const apiKey = getGroqKey();
     if (!apiKey) {
-      toast.error("Configure sua chave da API Gemini nas Configurações antes de usar o aprimoramento por IA.");
+      toast.error("Configure sua chave da API Groq nas Configurações antes de usar o aprimoramento por IA.");
       return;
     }
     if (!navigator.onLine) {
@@ -93,7 +93,7 @@ function ReviewPage() {
         roomName: e.roomName,
         original: e.original,
       }));
-      const map = await enhanceObservationsGemini(apiKey, payload);
+      const map = await enhanceObservationsGroq(apiKey, payload);
       setEntries((prev) =>
         prev.map((e) => {
           const k = keyFor(e.roomId, e.itemIdx);

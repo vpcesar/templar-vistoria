@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getCompany, getResponsibles, newId, saveCompany, saveResponsibles } from "@/lib/storage";
-import { clearGeminiKey, getGeminiKey, setGeminiKey, testGeminiConnection } from "@/lib/gemini-client";
+import { clearGroqKey, getGroqKey, setGroqKey, testGroqConnection } from "@/lib/groq-client";
 import { compressImage } from "@/lib/image-utils";
 import type { CompanyInfo, Responsible } from "@/lib/types";
 import { ArrowLeft, Plus, Trash2, Pencil, Save, X, Upload, ImageOff, CheckCircle2, KeyRound, Loader2 } from "lucide-react";
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
       { title: "Configurações — TEMPLAR ENGENHARIA" },
-      { name: "description", content: "Cadastre responsáveis técnicos, logo da empresa e a chave da API Gemini." },
+      { name: "description", content: "Cadastre responsáveis técnicos, logo da empresa e a chave da API Groq." },
       { property: "og:title", content: "Configurações — TEMPLAR ENGENHARIA" },
       { property: "og:description", content: "Responsáveis, dados da empresa, logo e integração de IA." },
     ],
@@ -31,14 +31,14 @@ function SettingsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editCrea, setEditCrea] = useState("");
-  const [geminiKey, setGeminiKeyState] = useState("");
+  const [groqKey, setGroqKeyState] = useState("");
   const [testing, setTesting] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setResps(getResponsibles());
     setCompany(getCompany());
-    setGeminiKeyState(getGeminiKey());
+    setGroqKeyState(getGroqKey());
   }, []);
 
   const add = () => {
@@ -103,29 +103,29 @@ function SettingsPage() {
     toast.success("Logo removido");
   };
 
-  const saveGemini = () => {
-    setGeminiKey(geminiKey.trim());
-    toast.success(geminiKey.trim() ? "Chave salva" : "Chave removida");
+  const saveGroq = () => {
+    setGroqKey(groqKey.trim());
+    toast.success(groqKey.trim() ? "Chave salva" : "Chave removida");
   };
-  const removeGemini = () => {
-    clearGeminiKey();
-    setGeminiKeyState("");
+  const removeGroq = () => {
+    clearGroqKey();
+    setGroqKeyState("");
     toast.success("Chave removida");
   };
-  const testGemini = async () => {
-    const k = geminiKey.trim();
+  const testGroq = async () => {
+    const k = groqKey.trim();
     if (!k) { toast.error("Informe a chave antes de testar."); return; }
     setTesting(true);
     try {
-      await testGeminiConnection(k);
-      setGeminiKey(k);
+      await testGroqConnection(k);
+      setGroqKey(k);
       toast.success("Conexão OK — chave salva");
     } catch (e: any) {
       toast.error(`Falha: ${e?.message ?? "erro desconhecido"}`);
     } finally { setTesting(false); }
   };
 
-  const keyConfigured = geminiKey.trim().length > 0 && getGeminiKey() === geminiKey.trim();
+  const keyConfigured = groqKey.trim().length > 0 && getGroqKey() === groqKey.trim();
 
   return (
     <div className="min-h-screen bg-secondary/40">
@@ -223,17 +223,17 @@ function SettingsPage() {
         <section className="rounded-lg bg-card border border-border p-5">
           <h2 className="font-semibold text-lg mb-1 flex items-center gap-2"><KeyRound className="h-5 w-5" /> Integração de IA</h2>
           <p className="text-xs text-muted-foreground mb-4">
-            A chave é usada apenas neste dispositivo para o aprimoramento de observações. Obtenha em{" "}
-            <a href="https://aistudio.google.com" target="_blank" rel="noreferrer" className="text-primary underline">aistudio.google.com</a>.
+            A chave é usada apenas neste dispositivo para o aprimoramento de observações. Obtenha sua chave gratuita em{" "}
+            <a href="https://console.groq.com" target="_blank" rel="noreferrer" className="text-primary underline">console.groq.com</a>.
           </p>
           <div className="grid gap-3">
             <div>
-              <Label>Chave da API Gemini</Label>
+              <Label>Chave da API Groq</Label>
               <Input
                 type="password"
-                value={geminiKey}
-                onChange={(e) => setGeminiKeyState(e.target.value)}
-                placeholder="AIza…"
+                value={groqKey}
+                onChange={(e) => setGroqKeyState(e.target.value)}
+                placeholder="gsk_…"
                 autoComplete="off"
               />
               <p className="text-xs mt-1 flex items-center gap-1.5">
@@ -245,12 +245,12 @@ function SettingsPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button onClick={saveGemini}><Save className="h-4 w-4" /> Salvar chave</Button>
-              <Button variant="outline" onClick={testGemini} disabled={testing}>
+              <Button onClick={saveGroq}><Save className="h-4 w-4" /> Salvar chave</Button>
+              <Button variant="outline" onClick={testGroq} disabled={testing}>
                 {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Testar conexão
               </Button>
-              {getGeminiKey() && (
-                <Button variant="ghost" onClick={removeGemini}><Trash2 className="h-4 w-4" /> Remover chave</Button>
+              {getGroqKey() && (
+                <Button variant="ghost" onClick={removeGroq}><Trash2 className="h-4 w-4" /> Remover chave</Button>
               )}
             </div>
           </div>
