@@ -1,4 +1,4 @@
-export type PropertyType = "NOVO" | "USADO" | "REFORMADO";
+export type PropertyType = "APARTAMENTO" | "CASA" | "GALPÃO" | "LOJA" | "ESCRITÓRIO";
 export type ItemStatus = "APROVADO" | "REPROVADO" | "NAO_APLICA" | null;
 
 export interface Responsible {

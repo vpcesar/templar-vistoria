@@ -33,7 +33,7 @@ function EditHeaderPage() {
   const [unit, setUnit] = useState("");
   const [respId, setRespId] = useState("");
   const [constructor, setConstructor] = useState("");
-  const [type, setType] = useState<PropertyType>("NOVO");
+  const [type, setType] = useState<PropertyType>("APARTAMENTO");
   const [rooms, setRooms] = useState<SortableRoom[]>([]);
 
   useEffect(() => {
@@ -106,7 +106,7 @@ function EditHeaderPage() {
               <div>
                 <Label>Tipo de imóvel</Label>
                 <select className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm" value={type} onChange={(e) => setType(e.target.value as PropertyType)}>
-                  <option value="NOVO">NOVO</option><option value="USADO">USADO</option><option value="REFORMADO">REFORMADO</option>
+                  <option value="APARTAMENTO">APARTAMENTO</option><option value="CASA">CASA</option><option value="GALPÃO">GALPÃO</option><option value="LOJA">LOJA</option><option value="ESCRITÓRIO">ESCRITÓRIO</option>
                 </select>
               </div>
             </div>
