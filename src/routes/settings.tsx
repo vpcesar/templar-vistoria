@@ -1,23 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getResponsibles, newId, saveResponsibles } from "@/lib/storage";
 import { clearGroqKey, getGroqKey, setGroqKey, testGroqConnection } from "@/lib/groq-client";
-import {
-  DRIVE_FOLDER_ID,
-  DRIVE_FOLDER_NAME,
-  connectDrive,
-  disconnectDrive,
-  getClientId,
-  isDriveConnected,
-  setClientId,
-} from "@/lib/google-drive";
+import { getSelectedFolder, setSelectedFolder, folderUrl, type DriveFolder } from "@/lib/google-drive";
+import { listDriveFolders } from "@/lib/drive.functions";
 import type { Responsible } from "@/lib/types";
-import { ArrowLeft, Plus, Trash2, Pencil, Save, X, CheckCircle2, KeyRound, Loader2, HardDrive } from "lucide-react";
+import {
+  ArrowLeft, Plus, Trash2, Pencil, Save, X, CheckCircle2, KeyRound, Loader2, HardDrive,
+  FolderOpen, ExternalLink, RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
