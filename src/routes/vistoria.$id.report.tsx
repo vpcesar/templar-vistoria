@@ -30,43 +30,38 @@ function ReportPage() {
   const [insp, setInsp] = useState<Inspection | null>(null);
   const [seq, setSeq] = useState<number>(0);
   const [busy, setBusy] = useState<"pdf" | "docx" | "share" | null>(null);
-  const [driveOn, setDriveOn] = useState(false);
+  const [folder, setFolder] = useState<DriveFolder | null>(null);
+  const upload = useServerFn(uploadDriveFile);
 
   useEffect(() => {
     const i = getInspection(id);
     if (!i) { navigate({ to: "/" }); return; }
     setSeq(ensureInspectionSeq(i));
     setInsp(i);
-    setDriveOn(isDriveConnected());
+    setFolder(getSelectedFolder());
   }, [id, navigate]);
 
   const number = formatInspectionNumber(seq || 0);
 
-  const driveFilename = (ext: string) => {
-    const [yyyy, mm, dd] = (insp?.date ?? "").split("-");
-    const dateBr = yyyy ? `${dd}-${mm}-${yyyy}` : (insp?.date ?? "");
-    return `VISTORIA_${insp?.client ?? "cliente"}_${dateBr}.${ext}`;
-  };
-  const localFilename = (ext: string) => {
-    const safe = (s: string) => s.replace(/[^\w\-]+/g, "_").slice(0, 40);
-    return `VISTORIA_${safe(insp?.client ?? "cliente")}_${insp?.date ?? ""}.${ext}`;
-  };
+  const filename = (ext: string) => reportFilename(insp?.client ?? "cliente", insp?.date ?? "", ext);
 
-  const sendToDrive = async (blob: Blob, ext: string) => {
-    if (!isDriveConnected()) return;
+  const sendToDrive = async (blob: Blob, ext: string, mimeType: string) => {
+    const target = folder ?? getSelectedFolder();
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
-      toast.warning("Sem internet. Relatório salvo localmente. Conecte-se para enviar ao Google Drive.");
+      toast.warning("Sem conexão. O relatório foi baixado localmente.");
       return;
     }
     try {
-      await uploadToDrive(blob, driveFilename(ext));
+      const contentBase64 = await blobToBase64(blob);
+      await upload({ data: { filename: filename(ext), mimeType, folderId: target.id, contentBase64 } });
       toast.success("Relatório salvo no Google Drive ✓", {
-        action: { label: "Abrir pasta", onClick: () => window.open(DRIVE_FOLDER_URL, "_blank") },
+        action: { label: "Abrir pasta", onClick: () => window.open(folderUrl(target.id), "_blank") },
       });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao enviar para o Google Drive. O relatório foi baixado localmente.");
+    } catch {
+      toast.error("Falha ao enviar para o Google Drive. O relatório foi baixado localmente.");
     }
   };
+
 
   const doPDF = async (share = false) => {
     if (!insp) return;
