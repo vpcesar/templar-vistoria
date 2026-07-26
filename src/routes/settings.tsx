@@ -38,16 +38,39 @@ function SettingsPage() {
   const [editCrea, setEditCrea] = useState("");
   const [groqKey, setGroqKeyState] = useState("");
   const [testing, setTesting] = useState(false);
-  const [clientId, setClientIdState] = useState("");
-  const [driveOn, setDriveOn] = useState(false);
-  const [connecting, setConnecting] = useState(false);
+  const [folder, setFolder] = useState<DriveFolder | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [loadingFolders, setLoadingFolders] = useState(false);
+  const [folders, setFolders] = useState<DriveFolder[]>([]);
+  const [folderQuery, setFolderQuery] = useState("");
+  const fetchFolders = useServerFn(listDriveFolders);
 
   useEffect(() => {
     setResps(getResponsibles());
     setGroqKeyState(getGroqKey());
-    setClientIdState(getClientId());
-    setDriveOn(isDriveConnected());
+    setFolder(getSelectedFolder());
   }, []);
+
+  const openPicker = async () => {
+    setPicking(true);
+    setLoadingFolders(true);
+    try {
+      const list = await fetchFolders({ data: {} });
+      setFolders(list);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao listar pastas do Google Drive");
+    } finally {
+      setLoadingFolders(false);
+    }
+  };
+
+  const chooseFolder = (f: DriveFolder) => {
+    setSelectedFolder(f);
+    setFolder(f);
+    setPicking(false);
+    toast.success(`Pasta selecionada: ${f.name}`);
+  };
+
 
   const add = () => {
     if (!newName.trim() || !newCrea.trim()) {
