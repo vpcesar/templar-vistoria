@@ -362,23 +362,55 @@ export async function generateDOCX(insp: Inspection, inspectionNumber: string): 
     }),
   );
 
+  const noBorders = {
+    top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+  };
+
   const footer = new Footer({
     children: [
       new Paragraph({
-        border: { top: { style: BorderStyle.SINGLE, size: 6, color: "CCCCCC", space: 4 } },
-        tabStops: [
-          { type: TabStopType.CENTER, position: TabStopPosition.MAX / 2 },
-          { type: TabStopType.RIGHT, position: TabStopPosition.MAX },
-        ],
-        children: [
-          new TextRun({ text: EMPRESA.nome, color: GRAY_HEX, size: 14 }),
-          new TextRun({ children: [new Tab()], size: 14 }),
-          ...contactRuns(14),
-          new TextRun({ children: [new Tab()], size: 14 }),
-          new TextRun({ text: "Página ", color: GRAY_HEX, size: 14 }),
-          new TextRun({ children: [PageNumber.CURRENT], color: GRAY_HEX, size: 14 }),
-          new TextRun({ text: " de ", color: GRAY_HEX, size: 14 }),
-          new TextRun({ children: [PageNumber.TOTAL_PAGES], color: GRAY_HEX, size: 14 }),
+        border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "CCCCCC", space: 2 } },
+        children: [new TextRun({ text: "", size: 2 })],
+      }),
+      new Table({
+        width: { size: 9026, type: WidthType.DXA },
+        columnWidths: [2400, 4426, 2200],
+        borders: noBorders,
+        rows: [
+          new TableRow({
+            children: [
+              new TableCell({
+                width: { size: 2400, type: WidthType.DXA },
+                margins: { top: 40, bottom: 0, left: 0, right: 40 },
+                children: [new Paragraph({ children: [new TextRun({ text: EMPRESA.nome, color: GRAY_HEX, size: 14 })] })],
+              }),
+              new TableCell({
+                width: { size: 4426, type: WidthType.DXA },
+                margins: { top: 40, bottom: 0, left: 40, right: 40 },
+                children: [new Paragraph({ alignment: AlignmentType.CENTER, children: contactRuns(14) })],
+              }),
+              new TableCell({
+                width: { size: 2200, type: WidthType.DXA },
+                margins: { top: 40, bottom: 0, left: 40, right: 0 },
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.RIGHT,
+                    children: [
+                      new TextRun({ text: "Página ", color: GRAY_HEX, size: 14 }),
+                      new TextRun({ children: [PageNumber.CURRENT], color: GRAY_HEX, size: 14 }),
+                      new TextRun({ text: " de ", color: GRAY_HEX, size: 14 }),
+                      new TextRun({ children: [PageNumber.TOTAL_PAGES], color: GRAY_HEX, size: 14 }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
         ],
       }),
     ],
