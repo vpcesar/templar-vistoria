@@ -2,19 +2,20 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
-import { getCompany, getInspection } from "@/lib/storage";
+import { ensureInspectionSeq, formatInspectionNumber, getInspection } from "@/lib/storage";
 import type { Inspection } from "@/lib/types";
 import { downloadBlob, generateDOCX, generatePDF, shareBlob } from "@/lib/report-generator";
-import { ArrowLeft, FileDown, FileText, Loader2, Pencil, Share2 } from "lucide-react";
+import { DRIVE_FOLDER_NAME, DRIVE_FOLDER_URL, isDriveConnected, uploadToDrive } from "@/lib/google-drive";
+import { ArrowLeft, CloudUpload, ExternalLink, FileDown, FileText, Loader2, Pencil, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/vistoria/$id/report")({
   head: () => ({
     meta: [
       { title: "Relatório de Vistoria — TEMPLAR ENGENHARIA" },
-      { name: "description", content: "Gere, baixe e compartilhe o relatório da vistoria em PDF ou Word." },
+      { name: "description", content: "Gere, baixe, compartilhe e envie ao Google Drive o relatório da vistoria em PDF ou Word." },
       { property: "og:title", content: "Relatório de Vistoria — TEMPLAR ENGENHARIA" },
-      { property: "og:description", content: "Gere, baixe e compartilhe o relatório em PDF ou Word." },
+      { property: "og:description", content: "Gere, baixe e envie o relatório ao Google Drive." },
     ],
   }),
   component: ReportPage,
@@ -24,33 +25,61 @@ function ReportPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const [insp, setInsp] = useState<Inspection | null>(null);
+  const [seq, setSeq] = useState<number>(0);
   const [busy, setBusy] = useState<"pdf" | "docx" | "share" | null>(null);
+  const [driveOn, setDriveOn] = useState(false);
 
   useEffect(() => {
     const i = getInspection(id);
     if (!i) { navigate({ to: "/" }); return; }
+    setSeq(ensureInspectionSeq(i));
     setInsp(i);
+    setDriveOn(isDriveConnected());
   }, [id, navigate]);
 
-  const filename = (ext: string) => {
+  const number = formatInspectionNumber(seq || 0);
+
+  const driveFilename = (ext: string) => {
+    const [yyyy, mm, dd] = (insp?.date ?? "").split("-");
+    const dateBr = yyyy ? `${dd}-${mm}-${yyyy}` : (insp?.date ?? "");
+    return `VISTORIA_${insp?.client ?? "cliente"}_${dateBr}.${ext}`;
+  };
+  const localFilename = (ext: string) => {
     const safe = (s: string) => s.replace(/[^\w\-]+/g, "_").slice(0, 40);
-    return `Vistoria_${safe(insp?.client ?? "cliente")}_${insp?.date ?? ""}.${ext}`;
+    return `VISTORIA_${safe(insp?.client ?? "cliente")}_${insp?.date ?? ""}.${ext}`;
+  };
+
+  const sendToDrive = async (blob: Blob, ext: string) => {
+    if (!isDriveConnected()) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      toast.warning("Sem internet. Relatório salvo localmente. Conecte-se para enviar ao Google Drive.");
+      return;
+    }
+    try {
+      await uploadToDrive(blob, driveFilename(ext));
+      toast.success("Relatório salvo no Google Drive ✓", {
+        action: { label: "Abrir pasta", onClick: () => window.open(DRIVE_FOLDER_URL, "_blank") },
+      });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao enviar para o Google Drive. O relatório foi baixado localmente.");
+    }
   };
 
   const doPDF = async (share = false) => {
     if (!insp) return;
     setBusy(share ? "share" : "pdf");
     try {
-      const blob = await generatePDF(insp, getCompany());
-      const name = filename("pdf");
+      const blob = await generatePDF(insp, number);
+      const name = localFilename("pdf");
       if (share) {
-        const ok = await shareBlob(blob, name, `Vistoria — ${insp.client}`);
+        const ok = await shareBlob(blob, name, `Vistoria ${number} — ${insp.client}`);
         if (!ok) { downloadBlob(blob, name); toast.success("PDF baixado (compartilhamento indisponível)"); }
         else toast.success("Compartilhado");
       } else {
         downloadBlob(blob, name);
         toast.success("PDF gerado");
       }
+      await sendToDrive(blob, "pdf");
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao gerar PDF");
     } finally { setBusy(null); }
@@ -60,9 +89,10 @@ function ReportPage() {
     if (!insp) return;
     setBusy("docx");
     try {
-      const blob = await generateDOCX(insp, getCompany());
-      downloadBlob(blob, filename("docx"));
+      const blob = await generateDOCX(insp, number);
+      downloadBlob(blob, localFilename("docx"));
       toast.success("Word gerado");
+      await sendToDrive(blob, "docx");
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao gerar Word");
     } finally { setBusy(null); }
@@ -99,7 +129,9 @@ function ReportPage() {
               <Pencil className="h-4 w-4" /> Editar cabeçalho
             </Button>
           </div>
-          <p className="text-sm text-muted-foreground mb-4">Cliente: <span className="font-medium text-foreground">{insp.client}</span> — {insp.date}</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            <span className="font-semibold text-primary">{number}</span> — Cliente: <span className="font-medium text-foreground">{insp.client}</span> — {insp.date}
+          </p>
 
           <div className="grid grid-cols-3 gap-3 mb-6">
             <StatBox label="Aprovados" value={totals.approved} tone="success" />
@@ -120,6 +152,33 @@ function ReportPage() {
               {busy === "share" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Share2 className="h-5 w-5" />}
               COMPARTILHAR PDF (WhatsApp, e-mail…)
             </Button>
+          </div>
+
+          <div className="mt-5 rounded-md border border-border bg-secondary/40 p-4">
+            <div className="flex items-start gap-2">
+              <CloudUpload className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+              <div className="text-sm">
+                {driveOn ? (
+                  <>
+                    <p className="font-medium">Google Drive conectado</p>
+                    <p className="text-xs text-muted-foreground">
+                      Os relatórios gerados são enviados automaticamente para a pasta “{DRIVE_FOLDER_NAME}”.{" "}
+                      <a href={DRIVE_FOLDER_URL} target="_blank" rel="noreferrer" className="text-primary underline inline-flex items-center gap-1">
+                        Abrir pasta <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-medium">Google Drive não conectado</p>
+                    <p className="text-xs text-muted-foreground mb-2">Os relatórios serão apenas baixados no dispositivo.</p>
+                    <Button size="sm" variant="outline" onClick={() => navigate({ to: "/settings" })}>
+                      Conectar Google Drive
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
