@@ -94,6 +94,49 @@ function ChecklistPage() {
     }
   };
 
+  const setItems = (items: ChecklistItemState[]) => {
+    const next: Inspection = {
+      ...insp,
+      rooms: insp.rooms.map((r, ri) => (ri !== roomIdx ? r : { ...r, items })),
+    };
+    setInsp(next);
+    try {
+      saveInspection(next);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao salvar");
+    }
+  };
+
+  const addCustomItem = () => {
+    const newItem: ChecklistItemState = {
+      templateId: `custom_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      title: "",
+      custom: true,
+      exists: null,
+      status: null,
+      observations: "",
+      photos: [],
+    };
+    setItems([...room.items, newItem]);
+    setEditingId(newItem.templateId);
+  };
+
+  const removeItem = (itemIdx: number) => {
+    if (!window.confirm("Deseja excluir este item?")) return;
+    setItems(room.items.filter((_, i) => i !== itemIdx));
+  };
+
+  const onDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const base = room.items.filter((it) => !it.custom);
+    const customs = room.items.filter((it) => it.custom);
+    const from = customs.findIndex((it) => it.templateId === active.id);
+    const to = customs.findIndex((it) => it.templateId === over.id);
+    if (from < 0 || to < 0) return;
+    setItems([...base, ...arrayMove(customs, from, to)]);
+  };
+
   const goPrev = () => setRoomIdx(Math.max(0, roomIdx - 1));
   const goNext = () => {
     if (roomIdx < insp.rooms.length - 1) setRoomIdx(roomIdx + 1);
