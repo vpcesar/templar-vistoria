@@ -1,17 +1,10 @@
-import type { CompanyInfo, Inspection, Responsible, RoomState } from "./types";
+import type { Inspection, Responsible, RoomState } from "./types";
 import { detectTemplate } from "./checklist-templates";
 import { isQuotaError } from "./image-utils";
 
 const K_INSPECTIONS = "templar_inspections_v1";
 const K_RESPONSIBLES = "templar_responsibles_v1";
-const K_COMPANY = "templar_company_v1";
-
-const DEFAULT_COMPANY: CompanyInfo = {
-  name: "TEMPLAR ENGENHARIA",
-  site: "www.templarengenharia.com.br",
-  whatsapp: "(21) 98180-8812",
-  email: "templarengenharia@hotmail.com",
-};
+const K_SEQ = "templar_inspection_seq_v1";
 
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;

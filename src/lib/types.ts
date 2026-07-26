@@ -41,6 +41,8 @@ export interface RoomState {
 
 export interface Inspection {
   id: string;
+  /** Número sequencial da vistoria (VIST-XXXX) */
+  seq?: number;
   createdAt: string;
   updatedAt: string;
   client: string;
