@@ -50,6 +50,7 @@ function ChecklistPage() {
   const navigate = useNavigate();
   const [insp, setInsp] = useState<Inspection | null>(null);
   const [roomIdx, setRoomIdx] = useState(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     const i = getInspection(id);
