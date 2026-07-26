@@ -205,16 +205,51 @@ function ChecklistPage() {
         </div>
 
         <div className="space-y-4">
-          {room.items.map((it, idx) => (
-            <ItemCard
-              key={it.templateId + idx}
-              index={idx + 1}
-              state={it}
-              template={template.items.find((t) => t.id === it.templateId)}
-              onUpdate={(patch) => updateItem(idx, patch)}
-            />
-          ))}
+          {room.items.map((it, idx) =>
+            it.custom ? null : (
+              <ItemCard
+                key={it.templateId + idx}
+                index={idx + 1}
+                state={it}
+                template={template.items.find((t) => t.id === it.templateId)}
+                onUpdate={(patch) => updateItem(idx, patch)}
+              />
+            ),
+          )}
+
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext
+              items={room.items.filter((it) => it.custom).map((it) => it.templateId)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-4">
+                {room.items.map((it, idx) =>
+                  it.custom ? (
+                    <SortableItemCard
+                      key={it.templateId}
+                      index={idx + 1}
+                      state={it}
+                      editing={editingId === it.templateId}
+                      onStartEdit={() => setEditingId(it.templateId)}
+                      onStopEdit={() => setEditingId(null)}
+                      onUpdate={(patch) => updateItem(idx, patch)}
+                      onRemove={() => removeItem(idx)}
+                    />
+                  ) : null,
+                )}
+              </div>
+            </SortableContext>
+          </DndContext>
+
+          <button
+            type="button"
+            onClick={addCustomItem}
+            className="w-full rounded-lg border-2 border-dashed border-border bg-transparent py-3 text-sm font-medium text-muted-foreground hover:border-primary hover:text-primary transition-colors inline-flex items-center justify-center gap-1.5"
+          >
+            <Plus className="h-4 w-4" /> Incluir item
+          </button>
         </div>
+
 
         {/* Nav */}
         <div className="mt-6 flex gap-2">
