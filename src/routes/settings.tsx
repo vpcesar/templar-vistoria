@@ -1,23 +1,31 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getCompany, getResponsibles, newId, saveCompany, saveResponsibles } from "@/lib/storage";
+import { getResponsibles, newId, saveResponsibles } from "@/lib/storage";
 import { clearGroqKey, getGroqKey, setGroqKey, testGroqConnection } from "@/lib/groq-client";
-import { compressImage } from "@/lib/image-utils";
-import type { CompanyInfo, Responsible } from "@/lib/types";
-import { ArrowLeft, Plus, Trash2, Pencil, Save, X, Upload, ImageOff, CheckCircle2, KeyRound, Loader2 } from "lucide-react";
+import {
+  DRIVE_FOLDER_ID,
+  DRIVE_FOLDER_NAME,
+  connectDrive,
+  disconnectDrive,
+  getClientId,
+  isDriveConnected,
+  setClientId,
+} from "@/lib/google-drive";
+import type { Responsible } from "@/lib/types";
+import { ArrowLeft, Plus, Trash2, Pencil, Save, X, CheckCircle2, KeyRound, Loader2, HardDrive } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
       { title: "Configurações — TEMPLAR ENGENHARIA" },
-      { name: "description", content: "Cadastre responsáveis técnicos, logo da empresa e a chave da API Groq." },
+      { name: "description", content: "Cadastre responsáveis técnicos, a chave da API Groq e conecte o Google Drive." },
       { property: "og:title", content: "Configurações — TEMPLAR ENGENHARIA" },
-      { property: "og:description", content: "Responsáveis, dados da empresa, logo e integração de IA." },
+      { property: "og:description", content: "Responsáveis técnicos, integração de IA e Google Drive." },
     ],
   }),
   component: SettingsPage,
@@ -25,7 +33,6 @@ export const Route = createFileRoute("/settings")({
 
 function SettingsPage() {
   const [resps, setResps] = useState<Responsible[]>([]);
-  const [company, setCompany] = useState<CompanyInfo>(getCompany());
   const [newName, setNewName] = useState("");
   const [newCrea, setNewCrea] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -33,12 +40,15 @@ function SettingsPage() {
   const [editCrea, setEditCrea] = useState("");
   const [groqKey, setGroqKeyState] = useState("");
   const [testing, setTesting] = useState(false);
-  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [clientId, setClientIdState] = useState("");
+  const [driveOn, setDriveOn] = useState(false);
+  const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
     setResps(getResponsibles());
-    setCompany(getCompany());
     setGroqKeyState(getGroqKey());
+    setClientIdState(getClientId());
+    setDriveOn(isDriveConnected());
   }, []);
 
   const add = () => {
@@ -66,43 +76,6 @@ function SettingsPage() {
     toast.success("Responsável atualizado");
   };
 
-  const persistCompany = (c: CompanyInfo) => {
-    try {
-      saveCompany(c);
-      setCompany(c);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao salvar");
-    }
-  };
-
-  const saveCompanyInfo = () => {
-    try {
-      saveCompany(company);
-      toast.success("Dados da empresa salvos");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao salvar");
-    }
-  };
-
-  const onLogoFile = async (file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("A imagem deve ter no máximo 5 MB.");
-      return;
-    }
-    try {
-      const data = await compressImage(file, 400, 0.85);
-      persistCompany({ ...company, logoBase64: data });
-      toast.success("Logo atualizado");
-    } catch {
-      toast.error("Não foi possível processar a imagem.");
-    }
-  };
-  const removeLogo = () => {
-    persistCompany({ ...company, logoBase64: undefined });
-    if (fileRef.current) fileRef.current.value = "";
-    toast.success("Logo removido");
-  };
-
   const saveGroq = () => {
     setGroqKey(groqKey.trim());
     toast.success(groqKey.trim() ? "Chave salva" : "Chave removida");
@@ -126,6 +99,28 @@ function SettingsPage() {
   };
 
   const keyConfigured = groqKey.trim().length > 0 && getGroqKey() === groqKey.trim();
+
+  const saveClientId = () => {
+    setClientId(clientId);
+    toast.success(clientId.trim() ? "Client ID salvo" : "Client ID removido");
+  };
+
+  const doConnectDrive = async () => {
+    if (!getClientId()) { toast.error("Salve o Google Client ID antes de conectar."); return; }
+    setConnecting(true);
+    try {
+      await connectDrive();
+      setDriveOn(true);
+      toast.success("Google Drive conectado ✓");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao conectar o Google Drive");
+    } finally { setConnecting(false); }
+  };
+  const doDisconnectDrive = () => {
+    disconnectDrive();
+    setDriveOn(false);
+    toast.success("Google Drive desconectado");
+  };
 
   return (
     <div className="min-h-screen bg-secondary/40">
@@ -175,52 +170,6 @@ function SettingsPage() {
         </section>
 
         <section className="rounded-lg bg-card border border-border p-5 mb-6">
-          <h2 className="font-semibold text-lg mb-4">Dados da Empresa</h2>
-
-          <div className="mb-5">
-            <Label>Logotipo</Label>
-            <div className="mt-2 flex items-center gap-4">
-              <div className="h-24 w-24 rounded-md border border-border bg-secondary/50 flex items-center justify-center overflow-hidden shrink-0">
-                {company.logoBase64 ? (
-                  <img src={company.logoBase64} alt="Logo" className="h-full w-full object-contain" />
-                ) : (
-                  <div className="text-[10px] text-muted-foreground text-center px-1 leading-tight">
-                    <ImageOff className="h-5 w-5 mx-auto mb-1" />
-                    LOGO DA<br />EMPRESA
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg"
-                  className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) onLogoFile(f); }}
-                />
-                <Button type="button" variant="outline" onClick={() => fileRef.current?.click()}>
-                  <Upload className="h-4 w-4" /> {company.logoBase64 ? "Trocar logo" : "Enviar logo"}
-                </Button>
-                {company.logoBase64 && (
-                  <Button type="button" variant="ghost" onClick={removeLogo}>
-                    <Trash2 className="h-4 w-4" /> Remover
-                  </Button>
-                )}
-                <p className="text-xs text-muted-foreground">JPG ou PNG, até 5 MB.</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-4">
-            <div><Label>Nome</Label><Input value={company.name} onChange={(e) => setCompany({ ...company, name: e.target.value })} /></div>
-            <div><Label>Site</Label><Input value={company.site} onChange={(e) => setCompany({ ...company, site: e.target.value })} /></div>
-            <div><Label>WhatsApp</Label><Input value={company.whatsapp} onChange={(e) => setCompany({ ...company, whatsapp: e.target.value })} /></div>
-            <div><Label>E-mail</Label><Input value={company.email} onChange={(e) => setCompany({ ...company, email: e.target.value })} /></div>
-            <Button onClick={saveCompanyInfo}><Save className="h-4 w-4" /> Salvar dados da empresa</Button>
-          </div>
-        </section>
-
-        <section className="rounded-lg bg-card border border-border p-5">
           <h2 className="font-semibold text-lg mb-1 flex items-center gap-2"><KeyRound className="h-5 w-5" /> Integração de IA</h2>
           <p className="text-xs text-muted-foreground mb-4">
             A chave é usada apenas neste dispositivo para o aprimoramento de observações. Obtenha sua chave gratuita em{" "}
@@ -251,6 +200,57 @@ function SettingsPage() {
               </Button>
               {getGroqKey() && (
                 <Button variant="ghost" onClick={removeGroq}><Trash2 className="h-4 w-4" /> Remover chave</Button>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-lg bg-card border border-border p-5">
+          <h2 className="font-semibold text-lg mb-1 flex items-center gap-2"><HardDrive className="h-5 w-5" /> Google Drive</h2>
+          <p className="text-xs text-muted-foreground mb-4">
+            Envie os relatórios gerados para uma pasta no seu Google Drive. Crie seu Client ID em{" "}
+            <a href="https://console.cloud.google.com" target="_blank" rel="noreferrer" className="text-primary underline">console.cloud.google.com</a>{" "}
+            (ative a Google Drive API).
+          </p>
+          <div className="grid gap-4">
+            <div>
+              <Label>Google Client ID</Label>
+              <Input
+                value={clientId}
+                onChange={(e) => setClientIdState(e.target.value)}
+                placeholder="000000000000-xxxxxxxx.apps.googleusercontent.com"
+                autoComplete="off"
+              />
+              <p className="text-xs mt-1">
+                {getClientId() ? (
+                  <span className="text-success inline-flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" /> Configurado</span>
+                ) : (
+                  <span className="text-muted-foreground">Não configurado</span>
+                )}
+              </p>
+            </div>
+
+            <div>
+              <Label>Pasta do Google Drive</Label>
+              <Input value={DRIVE_FOLDER_NAME} readOnly disabled />
+              <p className="text-[11px] text-muted-foreground mt-1 break-all">ID: {DRIVE_FOLDER_ID}</p>
+            </div>
+
+            <p className="text-xs">
+              {driveOn ? (
+                <span className="text-success inline-flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" /> Google Drive conectado</span>
+              ) : (
+                <span className="text-muted-foreground">Google Drive desconectado</span>
+              )}
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={saveClientId}><Save className="h-4 w-4" /> Salvar Client ID</Button>
+              <Button onClick={doConnectDrive} disabled={connecting}>
+                {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <HardDrive className="h-4 w-4" />} Conectar Google Drive
+              </Button>
+              {driveOn && (
+                <Button variant="ghost" onClick={doDisconnectDrive}><Trash2 className="h-4 w-4" /> Desconectar</Button>
               )}
             </div>
           </div>
