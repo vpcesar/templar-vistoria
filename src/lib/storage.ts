@@ -30,12 +30,20 @@ function write<T>(key: string, value: T): void {
   }
 }
 
-export function getCompany(): CompanyInfo {
-  return { ...DEFAULT_COMPANY, ...read<Partial<CompanyInfo>>(K_COMPANY, {}) };
+/** Retorna (atribuindo se necessário) o número sequencial da vistoria. */
+export function ensureInspectionSeq(insp: Inspection): number {
+  if (insp.seq) return insp.seq;
+  const next = read<number>(K_SEQ, 0) + 1;
+  write(K_SEQ, next);
+  insp.seq = next;
+  saveInspection(insp);
+  return next;
 }
-export function saveCompany(c: CompanyInfo): void {
-  write(K_COMPANY, c);
+
+export function formatInspectionNumber(seq: number): string {
+  return `VIST-${String(seq).padStart(4, "0")}`;
 }
+
 
 export function getResponsibles(): Responsible[] {
   return read<Responsible[]>(K_RESPONSIBLES, []);
