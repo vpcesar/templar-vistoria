@@ -288,7 +288,7 @@ export async function generateDOCX(insp: Inspection, inspectionNumber: string): 
   const {
     Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType,
     Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, PageBreak,
-    ExternalHyperlink, Header, Footer, PageNumber, TabStopType, TabStopPosition, Tab,
+    ExternalHyperlink, Header, Footer, PageNumber, TabStopType, TabStopPosition,
   } = docx;
 
   let logoBuf: ArrayBuffer | null = null;
