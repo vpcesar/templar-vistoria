@@ -403,10 +403,12 @@ function ItemCard({
 
   return (
     <div className="rounded-lg bg-card border border-border p-4 shadow-sm">
-      <h3 className="font-semibold text-foreground flex items-start gap-2">
-        <span className="text-primary shrink-0">{index}.</span>
-        <span>{template?.title ?? state.title}</span>
-      </h3>
+      {header ?? (
+        <h3 className="font-semibold text-foreground flex items-start gap-2">
+          <span className="text-primary shrink-0">{index}.</span>
+          <span>{template?.title ?? state.title}</span>
+        </h3>
+      )}
 
       {/* Etapa 1 */}
       <div className="mt-3">
