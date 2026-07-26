@@ -57,8 +57,6 @@ export const uploadDriveFile = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const boundary = `templar${Math.random().toString(36).slice(2)}`;
     const metadata = JSON.stringify({ name: data.filename, parents: [data.folderId] });
-    const bytes = Buffer.from(data.contentBase64, "base64");
-
     const head = Buffer.from(
       `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n` +
         `--${boundary}\r\nContent-Type: ${data.mimeType}\r\nContent-Transfer-Encoding: base64\r\n\r\n`,
@@ -66,7 +64,7 @@ export const uploadDriveFile = createServerFn({ method: "POST" })
     );
     const tail = Buffer.from(`\r\n--${boundary}--\r\n`, "utf8");
     const body = Buffer.concat([head, Buffer.from(data.contentBase64, "utf8"), tail]);
-    void bytes;
+
 
     const res = await fetch(
       `${GATEWAY}/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,webViewLink`,
