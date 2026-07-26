@@ -8,8 +8,6 @@ export interface Responsible {
 }
 
 export interface ChecklistItemTemplate {
-
-export interface ChecklistItemTemplate {
   id: string;
   title: string;
   orientacoes?: string[];
