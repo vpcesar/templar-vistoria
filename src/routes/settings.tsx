@@ -121,27 +121,10 @@ function SettingsPage() {
 
   const keyConfigured = groqKey.trim().length > 0 && getGroqKey() === groqKey.trim();
 
-  const saveClientId = () => {
-    setClientId(clientId);
-    toast.success(clientId.trim() ? "Client ID salvo" : "Client ID removido");
-  };
+  const visibleFolders = folders.filter((f) =>
+    f.name.toLowerCase().includes(folderQuery.trim().toLowerCase()),
+  );
 
-  const doConnectDrive = async () => {
-    if (!getClientId()) { toast.error("Salve o Google Client ID antes de conectar."); return; }
-    setConnecting(true);
-    try {
-      await connectDrive();
-      setDriveOn(true);
-      toast.success("Google Drive conectado ✓");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao conectar o Google Drive");
-    } finally { setConnecting(false); }
-  };
-  const doDisconnectDrive = () => {
-    disconnectDrive();
-    setDriveOn(false);
-    toast.success("Google Drive desconectado");
-  };
 
   return (
     <div className="min-h-screen bg-secondary/40">
