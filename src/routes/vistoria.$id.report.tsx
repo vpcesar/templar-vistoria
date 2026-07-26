@@ -157,25 +157,22 @@ function ReportPage() {
             <div className="flex items-start gap-2">
               <CloudUpload className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
               <div className="text-sm">
-                {driveOn ? (
-                  <>
-                    <p className="font-medium">Google Drive conectado</p>
-                    <p className="text-xs text-muted-foreground">
-                      Os relatórios gerados são enviados automaticamente para a pasta “{DRIVE_FOLDER_NAME}”.{" "}
-                      <a href={DRIVE_FOLDER_URL} target="_blank" rel="noreferrer" className="text-primary underline inline-flex items-center gap-1">
-                        Abrir pasta <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="font-medium">Google Drive não conectado</p>
-                    <p className="text-xs text-muted-foreground mb-2">Os relatórios serão apenas baixados no dispositivo.</p>
-                    <Button size="sm" variant="outline" onClick={() => navigate({ to: "/settings" })}>
-                      Conectar Google Drive
-                    </Button>
-                  </>
-                )}
+                <p className="font-medium">Google Drive conectado</p>
+                <p className="text-xs text-muted-foreground">
+                  Os relatórios gerados são enviados automaticamente para a pasta “{folder?.name ?? "—"}”.{" "}
+                  <a
+                    href={folderUrl(folder?.id ?? "")}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary underline inline-flex items-center gap-1"
+                  >
+                    Abrir pasta <ExternalLink className="h-3 w-3" />
+                  </a>{" "}
+                  <button type="button" className="text-primary underline" onClick={() => navigate({ to: "/settings" })}>
+                    Trocar pasta
+                  </button>
+                </p>
+
               </div>
             </div>
           </div>
