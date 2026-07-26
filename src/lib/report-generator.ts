@@ -288,7 +288,7 @@ export async function generateDOCX(insp: Inspection, inspectionNumber: string): 
   const {
     Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType,
     Table, TableRow, TableCell, WidthType, BorderStyle, ShadingType, PageBreak,
-    ExternalHyperlink, Header, Footer, PageNumber, TabStopType, TabStopPosition,
+    ExternalHyperlink, Header, Footer, PageNumber, TabStopType, TabStopPosition, Tab,
   } = docx;
 
   let logoBuf: ArrayBuffer | null = null;
@@ -356,7 +356,7 @@ export async function generateDOCX(insp: Inspection, inspectionNumber: string): 
   headerChildren.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { before: 60 },
+      spacing: { before: 60, after: 120 },
       border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "CCCCCC", space: 4 } },
       children: contactRuns(14),
     }),
@@ -372,9 +372,9 @@ export async function generateDOCX(insp: Inspection, inspectionNumber: string): 
         ],
         children: [
           new TextRun({ text: EMPRESA.nome, color: GRAY_HEX, size: 14 }),
-          new TextRun({ text: "\t", size: 14 }),
+          new TextRun({ children: [new Tab()], size: 14 }),
           ...contactRuns(14),
-          new TextRun({ text: "\t", size: 14 }),
+          new TextRun({ children: [new Tab()], size: 14 }),
           new TextRun({ text: "Página ", color: GRAY_HEX, size: 14 }),
           new TextRun({ children: [PageNumber.CURRENT], color: GRAY_HEX, size: 14 }),
           new TextRun({ text: " de ", color: GRAY_HEX, size: 14 }),
@@ -480,7 +480,7 @@ export async function generateDOCX(insp: Inspection, inspectionNumber: string): 
   const doc = new Document({
     styles: { default: { document: { run: { font: "Arial", size: 22 } } } },
     sections: [{
-      properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1700, right: 1000, bottom: 1200, left: 1000 } } },
+      properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 2100, right: 1000, bottom: 1200, left: 1000 } } },
       headers: { default: new Header({ children: headerChildren }) },
       footers: { default: footer },
       children,
