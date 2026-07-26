@@ -1,13 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { ensureInspectionSeq, formatInspectionNumber, getInspection } from "@/lib/storage";
 import type { Inspection } from "@/lib/types";
 import { downloadBlob, generateDOCX, generatePDF, shareBlob } from "@/lib/report-generator";
-import { DRIVE_FOLDER_NAME, DRIVE_FOLDER_URL, isDriveConnected, uploadToDrive } from "@/lib/google-drive";
+import { blobToBase64, folderUrl, getSelectedFolder, reportFilename, type DriveFolder } from "@/lib/google-drive";
+import { uploadDriveFile } from "@/lib/drive.functions";
 import { ArrowLeft, CloudUpload, ExternalLink, FileDown, FileText, Loader2, Pencil, Share2 } from "lucide-react";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/vistoria/$id/report")({
   head: () => ({
@@ -27,50 +30,45 @@ function ReportPage() {
   const [insp, setInsp] = useState<Inspection | null>(null);
   const [seq, setSeq] = useState<number>(0);
   const [busy, setBusy] = useState<"pdf" | "docx" | "share" | null>(null);
-  const [driveOn, setDriveOn] = useState(false);
+  const [folder, setFolder] = useState<DriveFolder | null>(null);
+  const upload = useServerFn(uploadDriveFile);
 
   useEffect(() => {
     const i = getInspection(id);
     if (!i) { navigate({ to: "/" }); return; }
     setSeq(ensureInspectionSeq(i));
     setInsp(i);
-    setDriveOn(isDriveConnected());
+    setFolder(getSelectedFolder());
   }, [id, navigate]);
 
   const number = formatInspectionNumber(seq || 0);
 
-  const driveFilename = (ext: string) => {
-    const [yyyy, mm, dd] = (insp?.date ?? "").split("-");
-    const dateBr = yyyy ? `${dd}-${mm}-${yyyy}` : (insp?.date ?? "");
-    return `VISTORIA_${insp?.client ?? "cliente"}_${dateBr}.${ext}`;
-  };
-  const localFilename = (ext: string) => {
-    const safe = (s: string) => s.replace(/[^\w\-]+/g, "_").slice(0, 40);
-    return `VISTORIA_${safe(insp?.client ?? "cliente")}_${insp?.date ?? ""}.${ext}`;
-  };
+  const filename = (ext: string) => reportFilename(insp?.client ?? "cliente", insp?.date ?? "", ext);
 
-  const sendToDrive = async (blob: Blob, ext: string) => {
-    if (!isDriveConnected()) return;
+  const sendToDrive = async (blob: Blob, ext: string, mimeType: string) => {
+    const target = folder ?? getSelectedFolder();
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
-      toast.warning("Sem internet. Relatório salvo localmente. Conecte-se para enviar ao Google Drive.");
+      toast.warning("Sem conexão. O relatório foi baixado localmente.");
       return;
     }
     try {
-      await uploadToDrive(blob, driveFilename(ext));
+      const contentBase64 = await blobToBase64(blob);
+      await upload({ data: { filename: filename(ext), mimeType, folderId: target.id, contentBase64 } });
       toast.success("Relatório salvo no Google Drive ✓", {
-        action: { label: "Abrir pasta", onClick: () => window.open(DRIVE_FOLDER_URL, "_blank") },
+        action: { label: "Abrir pasta", onClick: () => window.open(folderUrl(target.id), "_blank") },
       });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao enviar para o Google Drive. O relatório foi baixado localmente.");
+    } catch {
+      toast.error("Falha ao enviar para o Google Drive. O relatório foi baixado localmente.");
     }
   };
+
 
   const doPDF = async (share = false) => {
     if (!insp) return;
     setBusy(share ? "share" : "pdf");
     try {
       const blob = await generatePDF(insp, number);
-      const name = localFilename("pdf");
+      const name = filename("pdf");
       if (share) {
         const ok = await shareBlob(blob, name, `Vistoria ${number} — ${insp.client}`);
         if (!ok) { downloadBlob(blob, name); toast.success("PDF baixado (compartilhamento indisponível)"); }
@@ -79,7 +77,7 @@ function ReportPage() {
         downloadBlob(blob, name);
         toast.success("PDF gerado");
       }
-      await sendToDrive(blob, "pdf");
+      await sendToDrive(blob, "pdf", "application/pdf");
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao gerar PDF");
     } finally { setBusy(null); }
@@ -90,9 +88,10 @@ function ReportPage() {
     setBusy("docx");
     try {
       const blob = await generateDOCX(insp, number);
-      downloadBlob(blob, localFilename("docx"));
+      downloadBlob(blob, filename("docx"));
       toast.success("Word gerado");
-      await sendToDrive(blob, "docx");
+      await sendToDrive(blob, "docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao gerar Word");
     } finally { setBusy(null); }
@@ -158,25 +157,22 @@ function ReportPage() {
             <div className="flex items-start gap-2">
               <CloudUpload className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
               <div className="text-sm">
-                {driveOn ? (
-                  <>
-                    <p className="font-medium">Google Drive conectado</p>
-                    <p className="text-xs text-muted-foreground">
-                      Os relatórios gerados são enviados automaticamente para a pasta “{DRIVE_FOLDER_NAME}”.{" "}
-                      <a href={DRIVE_FOLDER_URL} target="_blank" rel="noreferrer" className="text-primary underline inline-flex items-center gap-1">
-                        Abrir pasta <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="font-medium">Google Drive não conectado</p>
-                    <p className="text-xs text-muted-foreground mb-2">Os relatórios serão apenas baixados no dispositivo.</p>
-                    <Button size="sm" variant="outline" onClick={() => navigate({ to: "/settings" })}>
-                      Conectar Google Drive
-                    </Button>
-                  </>
-                )}
+                <p className="font-medium">Google Drive conectado</p>
+                <p className="text-xs text-muted-foreground">
+                  Os relatórios gerados são enviados automaticamente para a pasta “{folder?.name ?? "—"}”.{" "}
+                  <a
+                    href={folderUrl(folder?.id ?? "")}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary underline inline-flex items-center gap-1"
+                  >
+                    Abrir pasta <ExternalLink className="h-3 w-3" />
+                  </a>{" "}
+                  <button type="button" className="text-primary underline" onClick={() => navigate({ to: "/settings" })}>
+                    Trocar pasta
+                  </button>
+                </p>
+
               </div>
             </div>
           </div>
