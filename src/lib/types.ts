@@ -7,14 +7,6 @@ export interface Responsible {
   crea: string;
 }
 
-export interface CompanyInfo {
-  name: string;
-  site: string;
-  whatsapp: string;
-  email: string;
-  logoBase64?: string;
-}
-
 export interface ChecklistItemTemplate {
   id: string;
   title: string;
@@ -49,6 +41,8 @@ export interface RoomState {
 
 export interface Inspection {
   id: string;
+  /** Número sequencial da vistoria (VIST-XXXX) */
+  seq?: number;
   createdAt: string;
   updatedAt: string;
   client: string;
