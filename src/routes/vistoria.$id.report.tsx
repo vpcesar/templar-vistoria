@@ -1,13 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { ensureInspectionSeq, formatInspectionNumber, getInspection } from "@/lib/storage";
 import type { Inspection } from "@/lib/types";
 import { downloadBlob, generateDOCX, generatePDF, shareBlob } from "@/lib/report-generator";
-import { DRIVE_FOLDER_NAME, DRIVE_FOLDER_URL, isDriveConnected, uploadToDrive } from "@/lib/google-drive";
+import { blobToBase64, folderUrl, getSelectedFolder, reportFilename, type DriveFolder } from "@/lib/google-drive";
+import { uploadDriveFile } from "@/lib/drive.functions";
 import { ArrowLeft, CloudUpload, ExternalLink, FileDown, FileText, Loader2, Pencil, Share2 } from "lucide-react";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/vistoria/$id/report")({
   head: () => ({
