@@ -1,13 +1,32 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { getInspection, saveInspection } from "@/lib/storage";
 import { ROOM_TEMPLATES } from "@/lib/checklist-templates";
 import { compressImage } from "@/lib/image-utils";
 import type { ChecklistItemState, Inspection, ItemStatus } from "@/lib/types";
-import { AlertTriangle, ArrowLeft, ArrowRight, Camera, Check, CheckCircle2, ClipboardCheck, Info, Lightbulb, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Camera, Check, CheckCircle2, ClipboardCheck, GripVertical, Info, Lightbulb, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/vistoria/$id/checklist")({
@@ -31,6 +50,12 @@ function ChecklistPage() {
   const navigate = useNavigate();
   const [insp, setInsp] = useState<Inspection | null>(null);
   const [roomIdx, setRoomIdx] = useState(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   useEffect(() => {
     const i = getInspection(id);
@@ -73,6 +98,49 @@ function ChecklistPage() {
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao salvar");
     }
+  };
+
+  const setItems = (items: ChecklistItemState[]) => {
+    const next: Inspection = {
+      ...insp,
+      rooms: insp.rooms.map((r, ri) => (ri !== roomIdx ? r : { ...r, items })),
+    };
+    setInsp(next);
+    try {
+      saveInspection(next);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao salvar");
+    }
+  };
+
+  const addCustomItem = () => {
+    const newItem: ChecklistItemState = {
+      templateId: `custom_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      title: "",
+      custom: true,
+      exists: null,
+      status: null,
+      observations: "",
+      photos: [],
+    };
+    setItems([...room.items, newItem]);
+    setEditingId(newItem.templateId);
+  };
+
+  const removeItem = (itemIdx: number) => {
+    if (!window.confirm("Deseja excluir este item?")) return;
+    setItems(room.items.filter((_, i) => i !== itemIdx));
+  };
+
+  const onDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const base = room.items.filter((it) => !it.custom);
+    const customs = room.items.filter((it) => it.custom);
+    const from = customs.findIndex((it) => it.templateId === active.id);
+    const to = customs.findIndex((it) => it.templateId === over.id);
+    if (from < 0 || to < 0) return;
+    setItems([...base, ...arrayMove(customs, from, to)]);
   };
 
   const goPrev = () => setRoomIdx(Math.max(0, roomIdx - 1));
@@ -142,16 +210,51 @@ function ChecklistPage() {
         </div>
 
         <div className="space-y-4">
-          {room.items.map((it, idx) => (
-            <ItemCard
-              key={it.templateId + idx}
-              index={idx + 1}
-              state={it}
-              template={template.items.find((t) => t.id === it.templateId)}
-              onUpdate={(patch) => updateItem(idx, patch)}
-            />
-          ))}
+          {room.items.map((it, idx) =>
+            it.custom ? null : (
+              <ItemCard
+                key={it.templateId + idx}
+                index={idx + 1}
+                state={it}
+                template={template.items.find((t) => t.id === it.templateId)}
+                onUpdate={(patch) => updateItem(idx, patch)}
+              />
+            ),
+          )}
+
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext
+              items={room.items.filter((it) => it.custom).map((it) => it.templateId)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-4">
+                {room.items.map((it, idx) =>
+                  it.custom ? (
+                    <SortableItemCard
+                      key={it.templateId}
+                      index={idx + 1}
+                      state={it}
+                      editing={editingId === it.templateId}
+                      onStartEdit={() => setEditingId(it.templateId)}
+                      onStopEdit={() => setEditingId(null)}
+                      onUpdate={(patch) => updateItem(idx, patch)}
+                      onRemove={() => removeItem(idx)}
+                    />
+                  ) : null,
+                )}
+              </div>
+            </SortableContext>
+          </DndContext>
+
+          <button
+            type="button"
+            onClick={addCustomItem}
+            className="w-full rounded-lg border-2 border-dashed border-border bg-transparent py-3 text-sm font-medium text-muted-foreground hover:border-primary hover:text-primary transition-colors inline-flex items-center justify-center gap-1.5"
+          >
+            <Plus className="h-4 w-4" /> Incluir item
+          </button>
         </div>
+
 
         {/* Nav */}
         <div className="mt-6 flex gap-2">
@@ -177,16 +280,103 @@ function ChecklistPage() {
   );
 }
 
+function SortableItemCard({
+  index,
+  state,
+  editing,
+  onStartEdit,
+  onStopEdit,
+  onUpdate,
+  onRemove,
+}: {
+  index: number;
+  state: ChecklistItemState;
+  editing: boolean;
+  onStartEdit: () => void;
+  onStopEdit: () => void;
+  onUpdate: (patch: Partial<ChecklistItemState>) => void;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: state.templateId,
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <ItemCard
+        index={index}
+        state={state}
+        template={undefined}
+        onUpdate={onUpdate}
+        header={
+          <div className="flex items-start gap-2">
+            <button
+              type="button"
+              {...attributes}
+              {...listeners}
+              className="p-1 -ml-1 cursor-grab active:cursor-grabbing text-muted-foreground touch-none"
+              aria-label="Arrastar para reordenar"
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
+            <span className="text-primary shrink-0 font-semibold">{index}.</span>
+            {editing ? (
+              <Input
+                autoFocus
+                value={state.title}
+                placeholder="Digite o nome do item…"
+                onChange={(e) => onUpdate({ title: e.target.value })}
+                onBlur={onStopEdit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    onStopEdit();
+                  }
+                }}
+                className="flex-1 h-9"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={onStartEdit}
+                className="flex-1 text-left font-semibold text-foreground inline-flex items-start gap-1.5"
+              >
+                <span>{state.title || "Item sem nome"}</span>
+                <Pencil className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onRemove}
+              className="p-1 text-muted-foreground hover:text-destructive"
+              aria-label="Excluir item"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        }
+      />
+    </div>
+  );
+}
+
 function ItemCard({
   index,
   state,
   template,
   onUpdate,
+  header,
 }: {
   index: number;
   state: ChecklistItemState;
   template: any;
   onUpdate: (patch: Partial<ChecklistItemState>) => void;
+  header?: React.ReactNode;
 }) {
   const setExists = (v: boolean) => {
     if (v === false) onUpdate({ exists: false, status: null, photos: [], observations: "" });
@@ -213,10 +403,12 @@ function ItemCard({
 
   return (
     <div className="rounded-lg bg-card border border-border p-4 shadow-sm">
-      <h3 className="font-semibold text-foreground flex items-start gap-2">
-        <span className="text-primary shrink-0">{index}.</span>
-        <span>{template?.title ?? state.title}</span>
-      </h3>
+      {header ?? (
+        <h3 className="font-semibold text-foreground flex items-start gap-2">
+          <span className="text-primary shrink-0">{index}.</span>
+          <span>{template?.title ?? state.title}</span>
+        </h3>
+      )}
 
       {/* Etapa 1 */}
       <div className="mt-3">
