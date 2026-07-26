@@ -2,7 +2,7 @@
 // Aqui ficam apenas a seleção de pasta (localStorage) e helpers de nome de arquivo.
 
 export const DEFAULT_FOLDER_ID = "10t6nAb8nulN9VPFeow2Au_VH3YgQA6Hv";
-export const DEFAULT_FOLDER_NAME = "Vistoria de recebimento";
+export const DEFAULT_FOLDER_NAME = "Vistorias de recebimento";
 
 const K_FOLDER = "templar_gdrive_folder";
 
