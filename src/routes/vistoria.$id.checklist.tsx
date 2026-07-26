@@ -275,16 +275,103 @@ function ChecklistPage() {
   );
 }
 
+function SortableItemCard({
+  index,
+  state,
+  editing,
+  onStartEdit,
+  onStopEdit,
+  onUpdate,
+  onRemove,
+}: {
+  index: number;
+  state: ChecklistItemState;
+  editing: boolean;
+  onStartEdit: () => void;
+  onStopEdit: () => void;
+  onUpdate: (patch: Partial<ChecklistItemState>) => void;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: state.templateId,
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <ItemCard
+        index={index}
+        state={state}
+        template={undefined}
+        onUpdate={onUpdate}
+        header={
+          <div className="flex items-start gap-2">
+            <button
+              type="button"
+              {...attributes}
+              {...listeners}
+              className="p-1 -ml-1 cursor-grab active:cursor-grabbing text-muted-foreground touch-none"
+              aria-label="Arrastar para reordenar"
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
+            <span className="text-primary shrink-0 font-semibold">{index}.</span>
+            {editing ? (
+              <Input
+                autoFocus
+                value={state.title}
+                placeholder="Digite o nome do item…"
+                onChange={(e) => onUpdate({ title: e.target.value })}
+                onBlur={onStopEdit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    onStopEdit();
+                  }
+                }}
+                className="flex-1 h-9"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={onStartEdit}
+                className="flex-1 text-left font-semibold text-foreground inline-flex items-start gap-1.5"
+              >
+                <span>{state.title || "Item sem nome"}</span>
+                <Pencil className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onRemove}
+              className="p-1 text-muted-foreground hover:text-destructive"
+              aria-label="Excluir item"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        }
+      />
+    </div>
+  );
+}
+
 function ItemCard({
   index,
   state,
   template,
   onUpdate,
+  header,
 }: {
   index: number;
   state: ChecklistItemState;
   template: any;
   onUpdate: (patch: Partial<ChecklistItemState>) => void;
+  header?: React.ReactNode;
 }) {
   const setExists = (v: boolean) => {
     if (v === false) onUpdate({ exists: false, status: null, photos: [], observations: "" });
