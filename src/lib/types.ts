@@ -24,6 +24,8 @@ export interface RoomTemplate {
 export interface ChecklistItemState {
   templateId: string;
   title: string;
+  /** true quando o item foi criado manualmente pelo usuário */
+  custom?: boolean;
   exists: boolean | null;
   status: ItemStatus;
   observations: string;
