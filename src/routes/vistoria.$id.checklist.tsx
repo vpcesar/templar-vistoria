@@ -51,6 +51,11 @@ function ChecklistPage() {
   const [insp, setInsp] = useState<Inspection | null>(null);
   const [roomIdx, setRoomIdx] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   useEffect(() => {
     const i = getInspection(id);
