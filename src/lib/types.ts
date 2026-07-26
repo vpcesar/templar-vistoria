@@ -7,13 +7,7 @@ export interface Responsible {
   crea: string;
 }
 
-export interface CompanyInfo {
-  name: string;
-  site: string;
-  whatsapp: string;
-  email: string;
-  logoBase64?: string;
-}
+export interface ChecklistItemTemplate {
 
 export interface ChecklistItemTemplate {
   id: string;
