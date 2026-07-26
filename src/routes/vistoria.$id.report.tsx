@@ -68,7 +68,7 @@ function ReportPage() {
     setBusy(share ? "share" : "pdf");
     try {
       const blob = await generatePDF(insp, number);
-      const name = localFilename("pdf");
+      const name = filename("pdf");
       if (share) {
         const ok = await shareBlob(blob, name, `Vistoria ${number} — ${insp.client}`);
         if (!ok) { downloadBlob(blob, name); toast.success("PDF baixado (compartilhamento indisponível)"); }
@@ -77,7 +77,7 @@ function ReportPage() {
         downloadBlob(blob, name);
         toast.success("PDF gerado");
       }
-      await sendToDrive(blob, "pdf");
+      await sendToDrive(blob, "pdf", "application/pdf");
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao gerar PDF");
     } finally { setBusy(null); }
@@ -88,9 +88,10 @@ function ReportPage() {
     setBusy("docx");
     try {
       const blob = await generateDOCX(insp, number);
-      downloadBlob(blob, localFilename("docx"));
+      downloadBlob(blob, filename("docx"));
       toast.success("Word gerado");
-      await sendToDrive(blob, "docx");
+      await sendToDrive(blob, "docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao gerar Word");
     } finally { setBusy(null); }
