@@ -211,54 +211,70 @@ function SettingsPage() {
 
         <section className="rounded-lg bg-card border border-border p-5">
           <h2 className="font-semibold text-lg mb-1 flex items-center gap-2"><HardDrive className="h-5 w-5" /> Google Drive</h2>
-          <p className="text-xs text-muted-foreground mb-4">
-            Envie os relatórios gerados para uma pasta no seu Google Drive. Crie seu Client ID em{" "}
-            <a href="https://console.cloud.google.com" target="_blank" rel="noreferrer" className="text-primary underline">console.cloud.google.com</a>{" "}
-            (ative a Google Drive API).
+          <p className="text-xs text-muted-foreground mb-3">
+            Os relatórios gerados são salvos automaticamente na pasta selecionada no seu Google Drive.
           </p>
-          <div className="grid gap-4">
+          <p className="text-sm text-success inline-flex items-center gap-1 mb-4">
+            <CheckCircle2 className="h-4 w-4" /> Google Drive conectado
+          </p>
+
+          <div className="grid gap-3">
             <div>
-              <Label>Google Client ID</Label>
-              <Input
-                value={clientId}
-                onChange={(e) => setClientIdState(e.target.value)}
-                placeholder="000000000000-xxxxxxxx.apps.googleusercontent.com"
-                autoComplete="off"
-              />
-              <p className="text-xs mt-1">
-                {getClientId() ? (
-                  <span className="text-success inline-flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" /> Configurado</span>
-                ) : (
-                  <span className="text-muted-foreground">Não configurado</span>
-                )}
+              <Label>Pasta de destino</Label>
+              <p className="text-sm font-medium mt-1 flex items-center gap-2">
+                <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                Pasta selecionada: {folder?.name ?? "—"}
               </p>
             </div>
 
-            <div>
-              <Label>Pasta do Google Drive</Label>
-              <Input value={DRIVE_FOLDER_NAME} readOnly disabled />
-              <p className="text-[11px] text-muted-foreground mt-1 break-all">ID: {DRIVE_FOLDER_ID}</p>
-            </div>
-
-            <p className="text-xs">
-              {driveOn ? (
-                <span className="text-success inline-flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" /> Google Drive conectado</span>
-              ) : (
-                <span className="text-muted-foreground">Google Drive desconectado</span>
-              )}
-            </p>
+            {picking && (
+              <div className="rounded-md border border-border p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Input
+                    value={folderQuery}
+                    onChange={(e) => setFolderQuery(e.target.value)}
+                    placeholder="Buscar pasta…"
+                  />
+                  <Button size="sm" variant="ghost" onClick={openPicker} disabled={loadingFolders}>
+                    <RefreshCw className={`h-4 w-4 ${loadingFolders ? "animate-spin" : ""}`} />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setPicking(false)}><X className="h-4 w-4" /></Button>
+                </div>
+                <div className="max-h-64 overflow-y-auto divide-y divide-border">
+                  {loadingFolders && <p className="text-sm text-muted-foreground p-2">Carregando pastas…</p>}
+                  {!loadingFolders && visibleFolders.length === 0 && (
+                    <p className="text-sm text-muted-foreground p-2">Nenhuma pasta encontrada.</p>
+                  )}
+                  {!loadingFolders && visibleFolders.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => chooseFolder(f)}
+                      className="w-full text-left px-2 py-2 text-sm hover:bg-secondary/60 flex items-center gap-2"
+                    >
+                      <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="truncate">{f.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={saveClientId}><Save className="h-4 w-4" /> Salvar Client ID</Button>
-              <Button onClick={doConnectDrive} disabled={connecting}>
-                {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <HardDrive className="h-4 w-4" />} Conectar Google Drive
+              <Button variant="outline" onClick={openPicker} disabled={loadingFolders}>
+                {loadingFolders ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />} Trocar pasta
               </Button>
-              {driveOn && (
-                <Button variant="ghost" onClick={doDisconnectDrive}><Trash2 className="h-4 w-4" /> Desconectar</Button>
-              )}
+              <Button
+                variant="secondary"
+                onClick={() => window.open(folderUrl(folder?.id ?? ""), "_blank")}
+                disabled={!folder}
+              >
+                <ExternalLink className="h-4 w-4" /> Abrir pasta no Drive
+              </Button>
             </div>
           </div>
         </section>
+
       </main>
     </div>
   );
