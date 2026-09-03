@@ -11,6 +11,11 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import {
+  installChunkReloadHandler,
+  isChunkLoadError,
+  reloadOnceForChunkError,
+} from "../lib/chunk-reload";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
