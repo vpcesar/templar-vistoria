@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { getInspection, saveInspection } from "@/lib/storage";
 import type { Inspection } from "@/lib/types";
-import { enhanceObservationsGroq, getGroqKey } from "@/lib/groq-client";
+import { enhanceObservationsGemini, getGeminiKey } from "@/lib/gemini-client";
 import { ArrowLeft, FileText, Sparkles, Check, Loader2, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,6 +16,8 @@ export const Route = createFileRoute("/vistoria/$id/review")({
       { name: "description", content: "Revise e aprimore as observações da vistoria antes de gerar o relatório." },
       { property: "og:title", content: "Revisão de Observações — TEMPLAR ENGENHARIA" },
       { property: "og:description", content: "Revise e aprimore as observações antes de gerar o relatório." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: ReviewPage,
@@ -76,9 +78,9 @@ function ReviewPage() {
 
   const enhanceAll = async () => {
     if (entries.length === 0) return;
-    const apiKey = getGroqKey();
+    const apiKey = getGeminiKey();
     if (!apiKey) {
-      toast.error("Configure sua chave da API Groq nas Configurações antes de usar o aprimoramento por IA.");
+      toast.error("Configure sua chave da API Gemini nas Configurações antes de usar o aprimoramento por IA.");
       return;
     }
     if (!navigator.onLine) {
@@ -93,7 +95,7 @@ function ReviewPage() {
         roomName: e.roomName,
         original: e.original,
       }));
-      const map = await enhanceObservationsGroq(apiKey, payload);
+      const map = await enhanceObservationsGemini(apiKey, payload);
       setEntries((prev) =>
         prev.map((e) => {
           const k = keyFor(e.roomId, e.itemIdx);
