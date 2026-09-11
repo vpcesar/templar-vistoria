@@ -1,6 +1,7 @@
 const K_GEMINI = "templar_gemini_key_v1";
 
-const MODEL = "gemini-2.0-flash";
+const MODEL_ID = "google/gemini-3.8-flash";
+const MODEL = MODEL_ID.replace("google/", "");
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
 const SYSTEM_PROMPT = `Você é um assistente técnico de engenharia civil. Reescreva o texto abaixo de forma técnica, objetiva e concisa. Use linguagem compreensível para leigos, mas que transmita conhecimento técnico. NUNCA invente dados ausentes no texto original, como medidas, quantidades ou locais. Se o texto mencionar rachadura, não adicione dimensões não informadas. Distinga fissura, trinca e rachadura somente quando o contexto permitir. Use português do Brasil, preferencialmente na forma passiva ou impessoal. Mantenha integralmente o sentido original. Responda somente com o texto aprimorado, sem prefácios.`;
